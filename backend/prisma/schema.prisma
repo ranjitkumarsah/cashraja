@@ -1,0 +1,474 @@
+// Cash Raja — Prisma schema
+// Source of truth: docs/cash-mafia-clone-trd.md §2 + docs/ARCHITECTURE_PLAN.md §3 (gap tables)
+// INVARIANT: coin_ledger is append-only; migrations touching it must be additive-only.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── Enums ───────────────────────────
+
+enum UserStatus {
+  active
+  flagged
+  banned
+}
+
+enum LedgerSourceType {
+  game
+  offer
+  ad
+  referral
+  redemption
+  admin_adjustment
+}
+
+enum OfferNetwork {
+  adjoe
+  adgate
+  offertoro
+  cpx
+  // dev/staging only — fully functional mock driver (ARCHITECTURE_PLAN §4)
+  mock
+}
+
+enum OfferCompletionStatus {
+  pending
+  credited
+  rejected
+}
+
+enum AdNetwork {
+  applovin_max
+  unity_levelplay
+  admob
+  // dev/staging only — fully functional mock SSV driver (ARCHITECTURE_PLAN §4)
+  mock
+}
+
+enum GiftCardBrand {
+  amazon
+  flipkart
+  google_play
+}
+
+enum RedemptionStatus {
+  requested
+  under_review
+  approved
+  rejected
+  issued
+}
+
+enum FulfillmentMethod {
+  api_xoxoday
+  api_qwikcilver
+  manual
+}
+
+enum FraudSeverity {
+  low
+  medium
+  high
+}
+
+enum FraudAutoAction {
+  none
+  flagged_for_review
+  auto_banned
+}
+
+enum AdminRole {
+  reviewer
+  super_admin
+}
+
+enum AdminStatus {
+  active
+  disabled
+}
+
+enum GameRoundStatus {
+  issued
+  completed
+  expired
+}
+
+enum BonusKind {
+  scratch
+  spin
+}
+
+enum InventoryStatus {
+  unused
+  reserved
+  issued
+}
+
+// ─────────────────────── TRD tables (§2.1–2.10) ───────────────────────
+
+model User {
+  id                String     @id @default(uuid()) @db.Uuid
+  googleUid         String     @unique @map("google_uid")
+  email             String     @map("email")
+  displayName       String     @map("display_name")
+  country           String?    @map("country")
+  deviceId          String?    @map("device_id")
+  status            UserStatus @default(active) @map("status")
+  // Cache only — authoritative balance is SUM(coin_ledger.amount).
+  // Maintained write-through inside LedgerService transactions; nightly reconciliation alerts on drift.
+  coinBalanceCached Int        @default(0) @map("coin_balance_cached")
+  referralCode      String     @unique @map("referral_code")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  lastSeenAt        DateTime   @default(now()) @map("last_seen_at")
+
+  ledgerEntries    CoinLedger[]
+  offerCompletions OfferCompletion[]
+  adImpressions    AdImpression[]
+  redemptions      Redemption[]
+  referralsMade    Referral[]        @relation("Referrer")
+  referralReceived Referral[]        @relation("Referred")
+  fraudFlags       FraudFlag[]
+  devices          Device[]
+  refreshTokens    RefreshToken[]
+  gameRounds       GameRound[]
+  streak           Streak?
+  bonusAttempts    BonusAttempt[]
+  notifications    Notification[]
+
+  @@index([deviceId])
+  @@map("users")
+}
+
+model CoinLedger {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  // positive = credit, negative = debit
+  amount         Int              @map("amount")
+  sourceType     LedgerSourceType @map("source_type")
+  sourceRefId    String?          @map("source_ref_id")
+  // DB-level anti-duplication: unique violation here is a no-op "already credited", never an error.
+  idempotencyKey String           @unique @map("idempotency_key")
+  balanceAfter   Int              @map("balance_after")
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  user                    User              @relation(fields: [userId], references: [id])
+  referralEarningsAsSrc   ReferralEarning[] @relation("SourceLedger")
+  referralEarningsAsBonus ReferralEarning[] @relation("BonusLedger")
+
+  @@index([userId, createdAt])
+  @@map("coin_ledger")
+}
+
+model Offer {
+  id              String       @id @default(uuid()) @db.Uuid
+  network         OfferNetwork @map("network")
+  externalOfferId String       @map("external_offer_id")
+  title           String       @map("title")
+  description     String?      @map("description")
+  coinReward      Int          @map("coin_reward")
+  requirements    Json?        @map("requirements")
+  isActive        Boolean      @default(true) @map("is_active")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  completions OfferCompletion[]
+
+  @@unique([network, externalOfferId])
+  @@map("offers")
+}
+
+model OfferCompletion {
+  id             String                @id @default(uuid()) @db.Uuid
+  userId         String                @map("user_id") @db.Uuid
+  offerId        String?               @map("offer_id") @db.Uuid
+  network        String                @map("network")
+  externalTxnId  String                @map("external_txn_id")
+  status         OfferCompletionStatus @default(pending) @map("status")
+  // coins to credit, captured from the (verified) postback at intake time
+  coinReward     Int                   @default(0) @map("coin_reward")
+  // why the completion is held (fraud pre-check) or rejected (e.g. 'expired')
+  statusReason   String?               @map("status_reason")
+  networkPayload Json?                 @map("network_payload")
+  creditedAt     DateTime?             @map("credited_at")
+  createdAt      DateTime              @default(now()) @map("created_at")
+
+  user  User   @relation(fields: [userId], references: [id])
+  offer Offer? @relation(fields: [offerId], references: [id])
+
+  @@unique([network, externalTxnId])
+  @@index([userId])
+  @@map("offer_completions")
+}
+
+model AdImpression {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  network    AdNetwork @map("network")
+  adUnitId   String    @map("ad_unit_id")
+  coinReward Int       @map("coin_reward")
+  // true only after server-to-server verification (SSV) — never on client claim alone
+  verified   Boolean   @default(false) @map("verified")
+  ssvPayload Json?     @map("ssv_payload")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("ad_impressions")
+}
+
+model GiftCard {
+  id           String        @id @default(uuid()) @db.Uuid
+  brand        GiftCardBrand @map("brand")
+  denomination Int           @map("denomination")
+  coinCost     Int           @map("coin_cost")
+  isActive     Boolean       @default(true) @map("is_active")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  redemptions Redemption[]
+
+  @@unique([brand, denomination])
+  @@map("gift_cards")
+}
+
+model Redemption {
+  id                String            @id @default(uuid()) @db.Uuid
+  userId            String            @map("user_id") @db.Uuid
+  giftCardId        String            @map("gift_card_id") @db.Uuid
+  coinAmount        Int               @map("coin_amount")
+  status            RedemptionStatus  @default(requested) @map("status")
+  fulfillmentMethod FulfillmentMethod @default(manual) @map("fulfillment_method")
+  // AES-256-GCM encrypted at rest; masked in every API response except the audited reveal endpoint
+  giftCardCode      String?           @map("gift_card_code")
+  rejectionReason   String?           @map("rejection_reason")
+  reviewedByAdminId String?           @map("reviewed_by_admin_id") @db.Uuid
+  createdAt         DateTime          @default(now()) @map("created_at")
+  resolvedAt        DateTime?         @map("resolved_at")
+
+  user            User                @relation(fields: [userId], references: [id])
+  giftCard        GiftCard            @relation(fields: [giftCardId], references: [id])
+  reviewedByAdmin Admin?              @relation(fields: [reviewedByAdminId], references: [id])
+  inventoryItems  GiftCardInventory[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("redemptions")
+}
+
+model Referral {
+  id           String   @id @default(uuid()) @db.Uuid
+  referrerId   String   @map("referrer_id") @db.Uuid
+  referredId   String   @unique @map("referred_id") @db.Uuid
+  // snapshot of rate at referral time — never retroactively changed
+  bonusPercent Decimal  @map("bonus_percent") @db.Decimal(5, 2)
+  validUntil   DateTime @map("valid_until")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  referrer User              @relation("Referrer", fields: [referrerId], references: [id])
+  referred User              @relation("Referred", fields: [referredId], references: [id])
+  earnings ReferralEarning[]
+
+  @@index([referrerId])
+  @@map("referrals")
+}
+
+model FraudFlag {
+  id            String          @id @default(uuid()) @db.Uuid
+  userId        String          @map("user_id") @db.Uuid
+  ruleTriggered String          @map("rule_triggered")
+  severity      FraudSeverity   @map("severity")
+  autoAction    FraudAutoAction @default(none) @map("auto_action")
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("fraud_flags")
+}
+
+model AdminAuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  adminId    String   @map("admin_id") @db.Uuid
+  action     String   @map("action")
+  targetType String?  @map("target_type")
+  targetId   String?  @map("target_id")
+  // required (application-enforced) for any manual balance adjustment
+  reason     String?  @map("reason")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  admin Admin @relation(fields: [adminId], references: [id])
+
+  @@index([adminId, createdAt])
+  @@map("admin_audit_log")
+}
+
+// ─────────────────── Gap-fix tables (ARCHITECTURE_PLAN §3, GAP_ANALYSIS D1–D11) ───────────────────
+
+model Admin {
+  id           String      @id @default(uuid()) @db.Uuid
+  email        String      @unique @map("email")
+  passwordHash String      @map("password_hash")
+  totpSecret   String?     @map("totp_secret")
+  role         AdminRole   @default(reviewer) @map("role")
+  status       AdminStatus @default(active) @map("status")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  auditLogs           AdminAuditLog[]
+  reviewedRedemptions Redemption[]
+  uploadedInventory   GiftCardInventory[]
+  configUpdates       AppConfig[]
+
+  @@map("admins")
+}
+
+model Device {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  deviceFingerprint String   @map("device_fingerprint")
+  firstSeen         DateTime @default(now()) @map("first_seen")
+  lastSeen          DateTime @default(now()) @map("last_seen")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, deviceFingerprint])
+  @@index([deviceFingerprint])
+  @@map("devices")
+}
+
+model RefreshToken {
+  id            String    @id @default(uuid()) @db.Uuid
+  tokenHash     String    @unique @map("token_hash")
+  userId        String    @map("user_id") @db.Uuid
+  expiresAt     DateTime  @map("expires_at")
+  rotatedFromId String?   @map("rotated_from_id") @db.Uuid
+  revokedAt     DateTime? @map("revoked_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user        User           @relation(fields: [userId], references: [id])
+  rotatedFrom RefreshToken?  @relation("Rotation", fields: [rotatedFromId], references: [id])
+  rotatedTo   RefreshToken[] @relation("Rotation")
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model GameRound {
+  id          String          @id @default(uuid()) @db.Uuid
+  userId      String          @map("user_id") @db.Uuid
+  difficulty  String          @map("difficulty")
+  status      GameRoundStatus @default(issued) @map("status")
+  issuedAt    DateTime        @default(now()) @map("issued_at")
+  completedAt DateTime?       @map("completed_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, issuedAt])
+  @@map("game_rounds")
+}
+
+model Streak {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @unique @map("user_id") @db.Uuid
+  currentCount  Int      @default(0) @map("current_count")
+  lastClaimDate DateTime @map("last_claim_date") @db.Date
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("streaks")
+}
+
+model BonusAttempt {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  kind        BonusKind @map("kind")
+  resultCoins Int       @map("result_coins")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("bonus_attempts")
+}
+
+model BonusConfig {
+  id             String    @id @default(uuid()) @db.Uuid
+  kind           BonusKind @map("kind")
+  // server-side weighted probability table, e.g. [{"coins": 5, "weight": 70}, ...]
+  weightedTable  Json      @map("weighted_table")
+  attemptsPerDay Int       @map("attempts_per_day")
+  version        Int       @map("version")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@unique([kind, version])
+  @@map("bonus_config")
+}
+
+model GiftCardInventory {
+  id                String          @id @default(uuid()) @db.Uuid
+  brand             GiftCardBrand   @map("brand")
+  denomination      Int             @map("denomination")
+  // AES-256-GCM encrypted; plaintext never stored or logged
+  codeEncrypted     String          @map("code_encrypted")
+  status            InventoryStatus @default(unused) @map("status")
+  uploadedByAdminId String          @map("uploaded_by_admin_id") @db.Uuid
+  redemptionId      String?         @map("redemption_id") @db.Uuid
+  createdAt         DateTime        @default(now()) @map("created_at")
+
+  uploadedByAdmin Admin       @relation(fields: [uploadedByAdminId], references: [id])
+  redemption      Redemption? @relation(fields: [redemptionId], references: [id])
+
+  @@index([brand, denomination, status])
+  @@map("gift_card_inventory")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String    @map("type")
+  title     String    @map("title")
+  body      String    @map("body")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+model ReferralEarning {
+  id             String   @id @default(uuid()) @db.Uuid
+  referralId     String   @map("referral_id") @db.Uuid
+  // the referred user's earning that triggered the bonus
+  sourceLedgerId String   @map("source_ledger_id") @db.Uuid
+  // the referrer's bonus credit
+  bonusLedgerId  String   @unique @map("bonus_ledger_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  referral     Referral   @relation(fields: [referralId], references: [id])
+  sourceLedger CoinLedger @relation("SourceLedger", fields: [sourceLedgerId], references: [id])
+  bonusLedger  CoinLedger @relation("BonusLedger", fields: [bonusLedgerId], references: [id])
+
+  @@index([referralId])
+  @@map("referral_earnings")
+}
+
+model AppConfig {
+  id               String   @id @default(uuid()) @db.Uuid
+  key              String   @map("key")
+  value            Json     @map("value")
+  version          Int      @map("version")
+  updatedByAdminId String?  @map("updated_by_admin_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  updatedByAdmin Admin? @relation(fields: [updatedByAdminId], references: [id])
+
+  // history preserved: every change is a new (key, version) row; current = max(version) per key
+  @@unique([key, version])
+  @@map("app_config")
+}

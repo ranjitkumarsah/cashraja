@@ -1,0 +1,81 @@
+name: backend
+
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**', '.github/workflows/backend.yml']
+  pull_request:
+    paths: ['backend/**', '.github/workflows/backend.yml']
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  # Fast feedback: no infrastructure. The DB-gated integration suite auto-skips
+  # because DATABASE_URL is not set here.
+  unit:
+    name: lint + typecheck + unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Prisma schema validation
+        run: npx prisma validate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+
+  # Full suite against real Postgres + Redis service containers, including the
+  # concurrency/idempotency integration tests.
+  integration:
+    name: full suite (postgres + redis)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cashraja
+          POSTGRES_USER: cashraja
+          POSTGRES_PASSWORD: cashraja
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cashraja -d cashraja"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://cashraja:cashraja@localhost:5432/cashraja?schema=public
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+      - name: Full test suite (unit + integration)
+        run: npm test
