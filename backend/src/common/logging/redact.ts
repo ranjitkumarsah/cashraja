@@ -13,6 +13,11 @@ export const REDACTED_FIELD_NAMES = [
   'refresh_token',
   'challenge_token',
   'password',
+  // Phase B: offer-launch URLs embed a signed launch token; secure_hash is
+  // CPX's wall-URL credential derivative.
+  'launch_url',
+  'launch_token',
+  'secure_hash',
 ] as const;
 
 export function buildRedactPaths(): string[] {

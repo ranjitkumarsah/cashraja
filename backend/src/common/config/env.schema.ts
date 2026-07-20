@@ -32,6 +32,29 @@ export const envSchema = z
 
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
+    // ── Provider adapter layer (Phase B, ARCHITECTURE_PLAN §4) ──
+    // Comma lists of ENABLED networks; unknown names are ignored with a warning.
+    // 'mock' drivers are dev/staging only (refused in production below).
+    OFFERWALL_NETWORKS: z.string().default('mock'),
+    AD_NETWORKS: z.string().default('mock'),
+    // Mock driver HMAC secrets (deterministic signatures for the simulator/E2E).
+    MOCK_OFFERWALL_SECRET: z.string().min(8).default('dev-mock-offerwall-secret'),
+    MOCK_AD_SSV_SECRET: z.string().min(8).default('dev-mock-ad-ssv-secret'),
+    // Real-network credentials — NEEDS_CREDENTIALS: adapters fail closed while empty.
+    ADJOE_S2S_SECRET: z.string().default(''),
+    ADGATE_POSTBACK_SECRET: z.string().default(''),
+    ADGATE_WALL_ID: z.string().default(''),
+    OFFERTORO_SECRET_KEY: z.string().default(''),
+    OFFERTORO_APP_ID: z.string().default(''),
+    OFFERTORO_PUB_ID: z.string().default(''),
+    CPX_SECURE_HASH: z.string().default(''),
+    CPX_APP_ID: z.string().default(''),
+    APPLOVIN_CALLBACK_TOKEN: z.string().default(''),
+    LEVELPLAY_PRIVATE_KEY: z.string().default(''),
+    ADMOB_SSV_KEY_SERVER_URL: z.union([z.string().url(), z.literal('')]).default(''),
+    // Postback worker toggle (false = run intake and worker as separate processes).
+    POSTBACK_WORKER_ENABLED: z.enum(['true', 'false']).default('true'),
+
     // Reconciliation / fraud-spike alert destination (Slack-compatible webhook). Empty = console alerts.
     ALERT_WEBHOOK_URL: z.union([z.string().url(), z.literal('')]).default(''),
   })
@@ -61,6 +84,17 @@ export const envSchema = z
           path: ['FIREBASE_VERIFIER'],
           message: 'FIREBASE_VERIFIER must not be "mock" in production',
         });
+      }
+      // Mock earn drivers accept deterministic dev signatures — never in prod.
+      for (const key of ['OFFERWALL_NETWORKS', 'AD_NETWORKS'] as const) {
+        const networks = env[key].split(',').map((n) => n.trim());
+        if (networks.includes('mock')) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: `${key} must not include "mock" in production`,
+          });
+        }
       }
     }
   });

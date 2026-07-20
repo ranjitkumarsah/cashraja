@@ -3,7 +3,7 @@
  * app_config defaults. Idempotent — safe to re-run.
  * Usage: npx prisma db seed   (requires a reachable DATABASE_URL)
  */
-import { GiftCardBrand, PrismaClient } from '@prisma/client';
+import { GiftCardBrand, OfferNetwork, PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -33,6 +33,43 @@ const CONFIG_DEFAULTS: Array<{ key: string; value: object }> = [
   { key: 'streak.day_rewards', value: { days: [5, 10, 15, 20, 30, 40, 50] } },
   { key: 'fraud.device_account_limits', value: { flag_over: 2, block_over: 3 } },
   { key: 'redemption.min_account_age_hours', value: { hours: 72 } },
+  // Phase B — postback pipeline + ad SSV rewards
+  { key: 'offers.pending_expiry_days', value: { days: 30 } },
+  { key: 'ads.daily_reward_cap', value: { views: 20 } },
+  { key: 'ads.coins_per_rewarded_view', value: { coins: 5 } },
+  { key: 'ads.max_reward_per_view', value: { coins: 100 } },
+];
+
+// Dev/E2E offers on the mock network (B3.3): launched via the mock adapter,
+// completed via `npm run simulate:postback -- --network=mock ...`.
+const MOCK_OFFERS: Array<{
+  externalOfferId: string;
+  title: string;
+  description: string;
+  coinReward: number;
+  requirements: object | undefined;
+}> = [
+  {
+    externalOfferId: 'mock-survey-1',
+    title: 'Quick Survey: Shopping Habits',
+    description: 'Answer 10 questions about how you shop online.',
+    coinReward: 100,
+    requirements: undefined,
+  },
+  {
+    externalOfferId: 'mock-install-1',
+    title: 'Install & Open: Puzzle Game',
+    description: 'Install the game and reach level 3.',
+    coinReward: 500,
+    requirements: { countries: ['IN'] },
+  },
+  {
+    externalOfferId: 'mock-signup-1',
+    title: 'Sign up: Fintech App',
+    description: 'Create an account and complete KYC.',
+    coinReward: 1500,
+    requirements: { countries: ['IN'], min_android: 10 },
+  },
 ];
 
 async function main(): Promise<void> {
@@ -99,6 +136,28 @@ async function main(): Promise<void> {
     },
   });
   console.log('Seeded bonus_config (scratch v1, spin v1)');
+
+  for (const offer of MOCK_OFFERS) {
+    await prisma.offer.upsert({
+      where: {
+        network_externalOfferId: {
+          network: OfferNetwork.mock,
+          externalOfferId: offer.externalOfferId,
+        },
+      },
+      update: {},
+      create: {
+        network: OfferNetwork.mock,
+        externalOfferId: offer.externalOfferId,
+        title: offer.title,
+        description: offer.description,
+        coinReward: offer.coinReward,
+        requirements: offer.requirements,
+        isActive: true,
+      },
+    });
+  }
+  console.log(`Seeded mock-network offers: ${MOCK_OFFERS.length}`);
 }
 
 main()

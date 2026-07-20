@@ -6,6 +6,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { AlertsModule } from './common/alerts/alerts.module';
+import { AppConfigModule } from './common/app-config/app-config.module';
 import { validateEnv } from './common/config/env.schema';
 import { buildRedactPaths, REDACT_CENSOR } from './common/logging/redact';
 import { PrismaModule } from './common/prisma/prisma.module';
@@ -14,6 +15,11 @@ import { AdminAuthModule } from './modules/admin-auth/admin-auth.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
+import { OffersModule } from './modules/offers/offers.module';
+import { PostbacksModule } from './modules/postbacks/postbacks.module';
+import { UsersModule } from './modules/users/users.module';
+import { WalletModule } from './modules/wallet/wallet.module';
+import { ProvidersModule } from './providers/providers.module';
 
 @Module({
   imports: [
@@ -48,10 +54,16 @@ import { LedgerModule } from './modules/ledger/ledger.module';
     ThrottlerModule.forRoot({ throttlers: [{ name: 'default', ttl: 60_000, limit: 300 }] }),
     PrismaModule,
     AlertsModule,
+    AppConfigModule,
     HealthModule,
     LedgerModule,
     AuthModule,
     AdminAuthModule,
+    ProvidersModule,
+    PostbacksModule,
+    OffersModule,
+    WalletModule,
+    UsersModule,
     JobsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

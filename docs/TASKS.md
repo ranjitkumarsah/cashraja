@@ -40,27 +40,27 @@ Each task is independently executable and maps to a build phase (A–F) from IMP
 ## B — Earning Pipelines
 
 ### B1 Adapter Layer
-- [ ] B1.1 OfferwallAdapter interface + registry (env-selected)
-- [ ] B1.2 Mock offerwall driver (deterministic HMAC) + simulator CLI
-- [ ] B1.3 Skeletons: adjoe, adgate, offertoro, cpx (`NEEDS_CREDENTIALS`)
-- [ ] B1.4 AdSsvAdapter interface + mock + skeletons (applovin, levelplay, admob)
-- [ ] B1.5 GiftCardProvider interface + ManualInventoryProvider stub wiring
+- [x] B1.1 OfferwallAdapter interface + registry (env-selected)
+- [x] B1.2 Mock offerwall driver (deterministic HMAC) + simulator CLI
+- [x] B1.3 Skeletons: adjoe, adgate, offertoro, cpx (`NEEDS_CREDENTIALS`)
+- [x] B1.4 AdSsvAdapter interface + mock + skeletons (applovin, levelplay, admob)
+- [x] B1.5 GiftCardProvider interface + ManualInventoryProvider stub wiring
 
 ### B2 Postback Pipeline
-- [ ] B2.1 POST /api/webhooks/offerwall/:network — verify→persist→enqueue→200
-- [ ] B2.2 BullMQ queue + worker (fraud hook → ledger credit → notify hook)
-- [ ] B2.3 offer_completions status flow + pending-expiry job (30d void)
-- [ ] B2.4 Integration tests per adapter: valid / bad-sig / replay
-- [ ] B2.5 Burst load test — p95 < 500ms response
+- [x] B2.1 POST /api/webhooks/offerwall/:network — verify→persist→enqueue→200
+- [x] B2.2 BullMQ queue + worker (fraud hook → ledger credit → notify hook)
+- [x] B2.3 offer_completions status flow + pending-expiry job (30d void)
+- [x] B2.4 Integration tests per adapter: valid / bad-sig / replay
+- [x] B2.5 Burst load test — p95 < 500ms response
 
 ### B3 Offers & Ads
-- [ ] B3.1 GET /api/offers (eligibility-filtered) · B3.2 POST /api/offers/:id/launch (signed token)
-- [ ] B3.3 POST /api/webhooks/ads/:network SSV flow + ad_impressions rows
-- [ ] B3.4 Daily ad-view caps + bonus slot (config-driven) + tests
+- [x] B3.1 GET /api/offers (eligibility-filtered) · B3.2 POST /api/offers/:id/launch (signed token)
+- [x] B3.3 POST /api/webhooks/ads/:network SSV flow + ad_impressions rows
+- [x] B3.4 Daily ad-view caps + bonus slot (config-driven) + tests
 
 ### B4 Wallet
-- [ ] B4.1 GET /api/wallet (balance, pending, recent) · B4.2 GET /api/wallet/ledger (cursor pagination) · B4.3 GET /api/me
-- [ ] B4.4 Rate limiting (throttler+Redis) on public endpoints
+- [x] B4.1 GET /api/wallet (balance, pending, recent) · B4.2 GET /api/wallet/ledger (cursor pagination) · B4.3 GET /api/me
+- [x] B4.4 Rate limiting (throttler+Redis) on public endpoints
 
 ## C — Redemption & Admin
 

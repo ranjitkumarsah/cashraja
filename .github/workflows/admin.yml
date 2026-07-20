@@ -1,0 +1,29 @@
+name: admin
+
+on:
+  push:
+    branches: [main]
+    paths: ['admin/**', '.github/workflows/admin.yml']
+  pull_request:
+    paths: ['admin/**', '.github/workflows/admin.yml']
+
+defaults:
+  run:
+    working-directory: admin
+
+jobs:
+  ci:
+    name: lint + typecheck + test + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

@@ -20,11 +20,13 @@ export function isDatabaseReachable(): boolean {
     return false;
   }
 
+  // Generous timeouts: under a fully parallel jest run the probe process can
+  // take seconds just to start — a false negative silently skips the suite.
   const probe =
-    `const s=require('net').connect({host:${JSON.stringify(host)},port:${port},timeout:2000});` +
+    `const s=require('net').connect({host:${JSON.stringify(host)},port:${port},timeout:5000});` +
     `s.on('connect',()=>{s.end();process.exit(0);});` +
     `s.on('error',()=>process.exit(1));` +
     `s.on('timeout',()=>{s.destroy();process.exit(1);});`;
-  const result = spawnSync(process.execPath, ['-e', probe], { timeout: 6000 });
+  const result = spawnSync(process.execPath, ['-e', probe], { timeout: 30000 });
   return result.status === 0;
 }
