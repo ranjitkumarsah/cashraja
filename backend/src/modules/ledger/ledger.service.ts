@@ -198,6 +198,54 @@ export class LedgerService {
     }
   }
 
+  /**
+   * ADDITIVE (Phase C): record a coin movement INSIDE a caller-supplied
+   * transaction, so the ledger write commits or rolls back atomically with
+   * another effect in the same tx — used by admin balance-adjust, where the
+   * coin_ledger row and its admin_audit_log row must be all-or-nothing
+   * (ARCHITECTURE_PLAN §2.5). Same invariants as record() (row lock,
+   * write-through cache, idempotency pre-check); it does NOT swallow P2002
+   * races — inside a shared tx a duplicate key aborts the whole tx, which is
+   * the correct behavior for a manual, non-idempotent-by-retry admin action.
+   *
+   * The existing record()/reserveDebit()/reverse() paths are unchanged.
+   */
+  async recordInTx(tx: Prisma.TransactionClient, params: RecordParams): Promise<CoinLedger> {
+    const { userId, amount, sourceType, sourceRefId, idempotencyKey } = params;
+    if (!Number.isInteger(amount) || amount === 0) {
+      throw new InvalidLedgerAmountError(`Ledger amount must be a non-zero integer, got ${amount}`);
+    }
+
+    const existing = await tx.coinLedger.findUnique({ where: { idempotencyKey } });
+    if (existing) {
+      return existing;
+    }
+
+    const rows = await tx.$queryRaw<LockedUserRow[]>`
+      SELECT id, coin_balance_cached FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
+    const locked = rows[0];
+    if (!locked) {
+      throw new LedgerUserNotFoundError(userId);
+    }
+    const balanceAfter = locked.coin_balance_cached + amount;
+
+    const entry = await tx.coinLedger.create({
+      data: {
+        userId,
+        amount,
+        sourceType,
+        sourceRefId: sourceRefId ?? null,
+        idempotencyKey,
+        balanceAfter,
+      },
+    });
+    await tx.user.update({
+      where: { id: userId },
+      data: { coinBalanceCached: balanceAfter },
+    });
+    return entry;
+  }
+
   /** Authoritative balance: SUM over the append-only ledger. */
   async getBalance(userId: string): Promise<number> {
     const result = await this.prisma.coinLedger.aggregate({

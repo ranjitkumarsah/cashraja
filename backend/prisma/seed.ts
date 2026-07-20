@@ -33,6 +33,8 @@ const CONFIG_DEFAULTS: Array<{ key: string; value: object }> = [
   { key: 'streak.day_rewards', value: { days: [5, 10, 15, 20, 30, 40, 50] } },
   { key: 'fraud.device_account_limits', value: { flag_over: 2, block_over: 3 } },
   { key: 'redemption.min_account_age_hours', value: { hours: 72 } },
+  // Phase C — gift-card inventory low-stock alert threshold (per brand+denom)
+  { key: 'inventory.low_stock_threshold', value: { threshold: 5 } },
   // Phase B — postback pipeline + ad SSV rewards
   { key: 'offers.pending_expiry_days', value: { days: 30 } },
   { key: 'ads.daily_reward_cap', value: { views: 20 } },

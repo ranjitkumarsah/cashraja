@@ -110,6 +110,11 @@ enum InventoryStatus {
   issued
 }
 
+enum FraudFlagStatus {
+  open
+  resolved
+}
+
 // ─────────────────────── TRD tables (§2.1–2.10) ───────────────────────
 
 model User {
@@ -278,16 +283,24 @@ model Referral {
 }
 
 model FraudFlag {
-  id            String          @id @default(uuid()) @db.Uuid
-  userId        String          @map("user_id") @db.Uuid
-  ruleTriggered String          @map("rule_triggered")
-  severity      FraudSeverity   @map("severity")
-  autoAction    FraudAutoAction @default(none) @map("auto_action")
-  createdAt     DateTime        @default(now()) @map("created_at")
+  id                String          @id @default(uuid()) @db.Uuid
+  userId            String          @map("user_id") @db.Uuid
+  ruleTriggered     String          @map("rule_triggered")
+  severity          FraudSeverity   @map("severity")
+  autoAction        FraudAutoAction @default(none) @map("auto_action")
+  // Phase C (C3.7) admin review surface over existing flags. The rule engine
+  // (Phase E) only ever inserts open flags; admins resolve them here.
+  status            FraudFlagStatus @default(open) @map("status")
+  resolutionAction  String?         @map("resolution_action")
+  resolvedByAdminId String?         @map("resolved_by_admin_id") @db.Uuid
+  resolvedAt        DateTime?       @map("resolved_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user            User   @relation(fields: [userId], references: [id])
+  resolvedByAdmin Admin? @relation(fields: [resolvedByAdminId], references: [id])
 
   @@index([userId])
+  @@index([status])
   @@map("fraud_flags")
 }
 
@@ -322,6 +335,7 @@ model Admin {
   reviewedRedemptions Redemption[]
   uploadedInventory   GiftCardInventory[]
   configUpdates       AppConfig[]
+  resolvedFraudFlags  FraudFlag[]
 
   @@map("admins")
 }
@@ -414,6 +428,10 @@ model GiftCardInventory {
   denomination      Int             @map("denomination")
   // AES-256-GCM encrypted; plaintext never stored or logged
   codeEncrypted     String          @map("code_encrypted")
+  // Keyed HMAC-SHA256 fingerprint of the plaintext code (GiftCardCryptoService)
+  // — backs the dedupe UNIQUE constraint, since GCM ciphertext is
+  // non-deterministic and cannot. Never reveals the plaintext.
+  codeFingerprint   String          @map("code_fingerprint")
   status            InventoryStatus @default(unused) @map("status")
   uploadedByAdminId String          @map("uploaded_by_admin_id") @db.Uuid
   redemptionId      String?         @map("redemption_id") @db.Uuid
@@ -422,6 +440,8 @@ model GiftCardInventory {
   uploadedByAdmin Admin       @relation(fields: [uploadedByAdminId], references: [id])
   redemption      Redemption? @relation(fields: [redemptionId], references: [id])
 
+  // Dedupe: the same code can't be uploaded twice for the same (brand, denomination).
+  @@unique([brand, denomination, codeFingerprint])
   @@index([brand, denomination, status])
   @@map("gift_card_inventory")
 }
@@ -471,4 +491,32 @@ model AppConfig {
   // history preserved: every change is a new (key, version) row; current = max(version) per key
   @@unique([key, version])
   @@map("app_config")
+}
+
+// ─────────────────── Phase C — metrics (C4) ───────────────────
+
+/**
+ * Pre-computed operational metrics (C4.1). The hourly aggregation job appends
+ * one immutable snapshot row; the admin dashboard reads the latest row plus a
+ * short time series (never recomputes on the request path). All coin figures
+ * are lifetime totals except `dau` (rolling 24h) so a series of snapshots
+ * shows growth over time.
+ */
+model MetricsSnapshot {
+  id                   String   @id @default(uuid()) @db.Uuid
+  capturedAt           DateTime @default(now()) @map("captured_at")
+  // distinct users active in the 24h preceding capture
+  dau                  Int      @map("dau")
+  // lifetime SUM of positive coin_ledger amounts (coins earned by users)
+  coinsIssued          Int      @map("coins_issued")
+  // lifetime coins paid out as issued gift cards (SUM redemption.coin_amount where status=issued)
+  coinsRedeemed        Int      @map("coins_redeemed")
+  // credited / total offer_completions (0..1)
+  offerCompletionRate  Float    @map("offer_completion_rate")
+  // coins reserved but not yet settled: redemptions in requested/under_review/approved
+  outstandingLiability Int      @map("outstanding_liability")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@index([capturedAt])
+  @@map("metrics_snapshots")
 }

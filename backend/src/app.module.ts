@@ -8,15 +8,21 @@ import { LoggerModule } from 'nestjs-pino';
 import { AlertsModule } from './common/alerts/alerts.module';
 import { AppConfigModule } from './common/app-config/app-config.module';
 import { validateEnv } from './common/config/env.schema';
+import { CryptoModule } from './common/crypto/crypto.module';
 import { buildRedactPaths, REDACT_CENSOR } from './common/logging/redact';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { JobsModule } from './jobs/jobs.module';
+import { AccountModule } from './modules/account/account.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { AdminAuthModule } from './modules/admin-auth/admin-auth.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { GiftCardsModule } from './modules/gift-cards/gift-cards.module';
 import { HealthModule } from './modules/health/health.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 import { OffersModule } from './modules/offers/offers.module';
 import { PostbacksModule } from './modules/postbacks/postbacks.module';
+import { RedemptionsModule } from './modules/redemptions/redemptions.module';
 import { UsersModule } from './modules/users/users.module';
 import { WalletModule } from './modules/wallet/wallet.module';
 import { ProvidersModule } from './providers/providers.module';
@@ -55,6 +61,7 @@ import { ProvidersModule } from './providers/providers.module';
     PrismaModule,
     AlertsModule,
     AppConfigModule,
+    CryptoModule,
     HealthModule,
     LedgerModule,
     AuthModule,
@@ -64,6 +71,11 @@ import { ProvidersModule } from './providers/providers.module';
     OffersModule,
     WalletModule,
     UsersModule,
+    GiftCardsModule,
+    RedemptionsModule,
+    AdminModule,
+    MetricsModule,
+    AccountModule,
     JobsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

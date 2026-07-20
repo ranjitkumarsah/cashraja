@@ -13,6 +13,17 @@ export const REDACTED_FIELD_NAMES = [
   'refresh_token',
   'challenge_token',
   'password',
+  // Phase C: gift-card inventory / redemption code material — plaintext codes
+  // and their sealed AES-256-GCM ciphertext must never reach log storage.
+  'code_encrypted',
+  'codeEncrypted',
+  'giftCardCode',
+  'plaintext',
+  'codes',
+  'temp_password',
+  'tempPassword',
+  'totp_secret',
+  'totpSecret',
   // Phase B: offer-launch URLs embed a signed launch token; secure_hash is
   // CPX's wall-URL credential derivative.
   'launch_url',
