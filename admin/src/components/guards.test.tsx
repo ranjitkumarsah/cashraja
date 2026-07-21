@@ -1,10 +1,38 @@
 import { screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearSession, makeJwt, renderApp, reviewerAdmin, seedSession, superAdmin } from '../test/utils';
 import { tokenStore } from '../lib/auth/token-store';
 
+// Authenticated routes render data-fetching pages; mock the shared axios instance
+// so those queries resolve instead of hitting a real (absent) backend.
+const { mockGet } = vi.hoisted(() => ({ mockGet: vi.fn() }));
+vi.mock('axios', () => {
+  const instance = {
+    get: mockGet,
+    post: vi.fn(),
+    patch: vi.fn(),
+    interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+  };
+  return { default: { create: () => instance, isAxiosError: () => false } };
+});
+
+const emptyMetrics = {
+  current: {
+    dau: 0,
+    coins_issued: 0,
+    coins_redeemed: 0,
+    offer_completion_rate: 0,
+    outstanding_liability: 0,
+  },
+  series: [],
+};
+
 beforeEach(() => {
   clearSession();
+  mockGet.mockReset();
+  mockGet.mockImplementation((url: string) =>
+    Promise.resolve({ data: url.includes('dashboard/metrics') ? emptyMetrics : [] }),
+  );
 });
 
 describe('route guards', () => {
@@ -46,7 +74,7 @@ describe('role gating (RBAC matrix)', () => {
   it('lets a super-admin open super-admin sections', async () => {
     seedSession(superAdmin);
     renderApp('/config');
-    expect(await screen.findByRole('heading', { name: 'Config is on its way' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Config', level: 1 })).toBeInTheDocument();
   });
 
   it('shows the reviewer only Dashboard, Users, Redemptions and Fraud in the nav', async () => {

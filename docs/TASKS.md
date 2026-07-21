@@ -65,41 +65,41 @@ Each task is independently executable and maps to a build phase (A–F) from IMP
 ## C — Redemption & Admin
 
 ### C1 Gift Cards & Inventory
-- [ ] C1.1 Catalog endpoints + admin CRUD
-- [ ] C1.2 Inventory upload (CSV/paste) — AES-256-GCM encrypt, dedupe
-- [ ] C1.3 Inventory lifecycle unused→reserved→issued + low-stock alert
-- [ ] C1.4 Audited reveal endpoint (super-admin only, masked elsewhere)
+- [x] C1.1 Catalog endpoints + admin CRUD
+- [x] C1.2 Inventory upload (CSV/paste) — AES-256-GCM encrypt, dedupe
+- [x] C1.3 Inventory lifecycle unused→reserved→issued + low-stock alert
+- [x] C1.4 Audited reveal endpoint (super-admin only, masked elsewhere)
 
 ### C2 Redemption Flow
-- [ ] C2.1 POST /api/redemptions — balance check, reserve-debit, fraud pre-screen annotation
-- [ ] C2.2 Status machine requested→under_review→approved/rejected→issued
-- [ ] C2.3 Approve → issue from inventory → in-app delivery; retry queue on failure
-- [ ] C2.4 Reject → compensating reversal + reason
-- [ ] C2.5 GET /api/redemptions/mine · C2.6 race test (E2E #5) · C2.7 banned-user hold rule (P6)
+- [x] C2.1 POST /api/redemptions — balance check, reserve-debit, fraud pre-screen annotation
+- [x] C2.2 Status machine requested→under_review→approved/rejected→issued
+- [x] C2.3 Approve → issue from inventory → in-app delivery; retry queue on failure
+- [x] C2.4 Reject → compensating reversal + reason
+- [x] C2.5 GET /api/redemptions/mine · C2.6 race test (E2E #5) · C2.7 banned-user hold rule (P6)
 
 ### C3 Admin API
-- [ ] C3.1 Users: list/filter, ledger view, flag/ban
-- [ ] C3.2 Balance adjust — ledger + audit log same transaction (+rollback test)
-- [ ] C3.3 Redemption queue endpoints + CSV export
-- [ ] C3.4 Offer management (enable/disable, edit reward) + postback log viewer
-- [ ] C3.5 Config management (rates, caps, referral %, probability tables) — versioned writes
-- [ ] C3.6 Admin management (create/disable, role assign) · C3.7 fraud-flag review queue
-- [ ] C3.8 Account deletion: DELETE /api/account (anonymize-in-place, ledger preserved)
+- [x] C3.1 Users: list/filter, ledger view, flag/ban
+- [x] C3.2 Balance adjust — ledger + audit log same transaction (+rollback test)
+- [x] C3.3 Redemption queue endpoints + CSV export
+- [x] C3.4 Offer management (enable/disable, edit reward) + postback log viewer
+- [x] C3.5 Config management (rates, caps, referral %, probability tables) — versioned writes
+- [x] C3.6 Admin management (create/disable, role assign) · C3.7 fraud-flag review queue
+- [x] C3.8 Account deletion: DELETE /api/account (anonymize-in-place, ledger preserved)
 
 ### C4 Metrics
-- [ ] C4.1 Hourly aggregates job (DAU, issued/redeemed, completion rates, liability)
-- [ ] C4.2 GET /api/admin/dashboard/metrics · C4.3 accuracy spot-check tests
+- [x] C4.1 Hourly aggregates job (DAU, issued/redeemed, completion rates, liability)
+- [x] C4.2 GET /api/admin/dashboard/metrics · C4.3 accuracy spot-check tests
 
 ### C5 Admin Panel (React)
-- [ ] C5.1 Scaffold: Vite+TS+Tailwind+shadcn-style+TanStack Query/Table+zod
-- [ ] C5.2 Raja theme (premium: indigo/gold, Inter, card layout, dark toggle)
-- [ ] C5.3 Login + TOTP flow, role-gated routing
-- [ ] C5.4 Dashboard (Recharts: DAU, coins issued vs redeemed, liability, completion rates)
-- [ ] C5.5 Users screen (search, ledger drawer, flag/ban, adjust-balance modal w/ reason)
-- [ ] C5.6 Redemption queue (bulk-review UX, approve/reject w/ reason, export)
-- [ ] C5.7 Offers screen · C5.8 Inventory screen (upload, stock levels)
-- [ ] C5.9 Fraud queue · C5.10 Config screen · C5.11 Admins screen
-- [ ] C5.12 Component/RBAC tests + build in CI
+- [x] C5.1 Scaffold: Vite+TS+Tailwind+shadcn-style+TanStack Query/Table+zod
+- [x] C5.2 Raja theme (premium: indigo/gold, Inter, card layout, dark toggle)
+- [x] C5.3 Login + TOTP flow, role-gated routing
+- [x] C5.4 Dashboard (Recharts: DAU, coins issued vs redeemed, liability, completion rates)
+- [x] C5.5 Users screen (search, ledger drawer, flag/ban, adjust-balance modal w/ reason)
+- [x] C5.6 Redemption queue (bulk-review UX, approve/reject w/ reason, export)
+- [x] C5.7 Offers screen · C5.8 Inventory screen (upload, stock levels)
+- [x] C5.9 Fraud queue · C5.10 Config screen · C5.11 Admins screen
+- [x] C5.12 Component/RBAC tests + build in CI
 
 ## D — Engagement Features
 

@@ -1,8 +1,37 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { THEME_STORAGE_KEY, ThemeProvider, useTheme } from './theme-context';
 import { renderApp, seedSession, superAdmin } from '../../test/utils';
+
+// The app shell's index route renders the data-fetching dashboard; mock the
+// shared axios instance so it resolves instead of reaching a real backend.
+const { mockGet } = vi.hoisted(() => ({ mockGet: vi.fn() }));
+vi.mock('axios', () => {
+  const instance = {
+    get: mockGet,
+    post: vi.fn(),
+    patch: vi.fn(),
+    interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+  };
+  return { default: { create: () => instance, isAxiosError: () => false } };
+});
+
+beforeEach(() => {
+  mockGet.mockReset();
+  mockGet.mockResolvedValue({
+    data: {
+      current: {
+        dau: 0,
+        coins_issued: 0,
+        coins_redeemed: 0,
+        offer_completion_rate: 0,
+        outstanding_liability: 0,
+      },
+      series: [],
+    },
+  });
+});
 
 function Probe() {
   const { theme, toggleTheme } = useTheme();
