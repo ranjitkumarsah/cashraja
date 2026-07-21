@@ -1,8 +1,10 @@
 import { Controller, Get, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AuthenticatedUser, CurrentUser, JwtAuthGuard } from '../../common/auth';
 import { StreakClaimResult, StreakService, StreakStateView } from './streak.service';
 
 /** D2 — daily streak state + claim, JWT-guarded. */
+@ApiTags('streak')
 @Controller('streak')
 @UseGuards(JwtAuthGuard)
 export class StreakController {

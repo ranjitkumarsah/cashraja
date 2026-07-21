@@ -4,11 +4,13 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { BonusKind, LedgerSourceType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { istDayStartUtc } from '../../common/time/ist-day';
 import { LedgerService } from '../ledger/ledger.service';
+import { NOTIFICATION_HOOK, NotificationHook } from '../notifications/notification-hook';
 import { ReferralService } from '../referral/referral.service';
 import {
   BONUS_RANDOM_INT,
@@ -44,6 +46,7 @@ export class BonusService {
     private readonly ledger: LedgerService,
     private readonly referral: ReferralService,
     @Inject(BONUS_RANDOM_INT) private readonly randomInt: RandomIntFn,
+    @Optional() @Inject(NOTIFICATION_HOOK) private readonly notifications?: NotificationHook,
   ) {}
 
   async getState(userId: string, kind: BonusKind): Promise<BonusStateView> {
@@ -86,6 +89,12 @@ export class BonusService {
       });
       newBalance = credit.entry.balanceAfter;
       await this.referral.onUserEarned({ userId, amount: prizeCoins, sourceLedgerId: credit.entry.id });
+      await this.notifications?.onCredited({
+        userId,
+        coins: prizeCoins,
+        sourceType: LedgerSourceType.bonus,
+        sourceRefId: credit.entry.id,
+      });
     } else {
       newBalance = await this.ledger.getCachedBalance(userId);
     }

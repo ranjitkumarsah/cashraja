@@ -1,3 +1,4 @@
+import { ApiTags } from '@nestjs/swagger';
 import {
   Body,
   Controller,
@@ -19,6 +20,7 @@ import { AdminConfigService, ConfigView } from './admin-config.service';
 import { UpdateConfigDto } from './dto/update-config.dto';
 
 /** C3.5 — config management. Reading is reviewer-viewable; writes super-admin. */
+@ApiTags('admin')
 @Controller('admin/config')
 @UseGuards(AdminAuthGuard, RolesGuard)
 export class AdminConfigController {

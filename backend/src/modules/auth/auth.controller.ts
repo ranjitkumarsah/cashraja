@@ -1,10 +1,12 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AuthService, AuthTokens, GoogleLoginResult } from './auth.service';
 import { clientIpOf } from './client-ip';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { RefreshDto } from './dto/refresh.dto';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}

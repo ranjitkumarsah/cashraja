@@ -148,6 +148,7 @@ model User {
   streak           Streak?
   bonusAttempts    BonusAttempt[]
   notifications    Notification[]
+  fcmTokens        FcmToken[]
 
   @@index([deviceId])
   @@map("users")
@@ -465,6 +466,23 @@ model Notification {
 
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+/**
+ * Phase E (E2) — registered FCM device tokens for push delivery. A token is
+ * globally unique (belongs to one account at a time; re-registering moves it).
+ */
+model FcmToken {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  token      String   @unique @map("token")
+  createdAt  DateTime @default(now()) @map("created_at")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("fcm_tokens")
 }
 
 model ReferralEarning {

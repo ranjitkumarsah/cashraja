@@ -7,6 +7,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { GameRoundStatus, LedgerSourceType } from '@prisma/client';
 import { AppConfigService } from '../../common/app-config/app-config.service';
@@ -14,6 +15,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { istDayStartUtc } from '../../common/time/ist-day';
 import { FRAUD_SIGNAL_HOOK, FraudSignalHook } from '../fraud/fraud-signal.hook';
 import { LedgerService } from '../ledger/ledger.service';
+import { NOTIFICATION_HOOK, NotificationHook } from '../notifications/notification-hook';
 import { ReferralService } from '../referral/referral.service';
 import { GameDifficulty } from './dto/round-start.dto';
 
@@ -61,6 +63,7 @@ export class GameService {
     private readonly appConfig: AppConfigService,
     private readonly referral: ReferralService,
     @Inject(FRAUD_SIGNAL_HOOK) private readonly fraudSignal: FraudSignalHook,
+    @Optional() @Inject(NOTIFICATION_HOOK) private readonly notifications?: NotificationHook,
   ) {}
 
   async roundStart(userId: string, difficulty: GameDifficulty): Promise<RoundStartResult> {
@@ -162,6 +165,14 @@ export class GameService {
 
     // Referral fan-out on the earning (best-effort, idempotent).
     await this.referral.onUserEarned({ userId, amount: coins, sourceLedgerId: credit.entry.id });
+
+    // Credit notification (best-effort, async — never blocks the credit).
+    await this.notifications?.onCredited({
+      userId,
+      coins,
+      sourceType: LedgerSourceType.game,
+      sourceRefId: credit.entry.id,
+    });
 
     const usedToday = await this.countRoundsToday(userId);
     const cap = await this.appConfig.getNumber(CFG.dailyCap, 'rounds', DEFAULTS.dailyCap);

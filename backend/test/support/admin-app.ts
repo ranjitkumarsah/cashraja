@@ -153,6 +153,7 @@ export async function createAdminTestApp(): Promise<AdminTestApp> {
         await prisma.adminAuditLog.deleteMany({ where: { adminId: { in: adminIds } } });
         await prisma.giftCardInventory.deleteMany({ where: { uploadedByAdminId: { in: adminIds } } });
         await prisma.notification.deleteMany({ where: { userId: { in: userIds } } });
+        await prisma.fcmToken.deleteMany({ where: { userId: { in: userIds } } });
         await prisma.fraudFlag.deleteMany({ where: { userId: { in: userIds } } });
         await prisma.redemption.deleteMany({ where: { userId: { in: userIds } } });
         await prisma.device.deleteMany({ where: { userId: { in: userIds } } });

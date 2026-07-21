@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { GiftCard, Prisma, Redemption, RedemptionStatus, User, UserStatus } from '@prisma/client';
 import { AUDIT_ACTIONS, writeAuditLog } from '../../common/audit/admin-audit';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { NotificationService } from '../notifications/notification.service';
 import { decodeCursor, encodeCursor } from '../wallet/wallet.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { FulfillmentOutcome, RedemptionsService, reserveKey } from './redemptions.service';
@@ -53,6 +54,7 @@ export class AdminRedemptionsService {
     private readonly prisma: PrismaService,
     private readonly ledger: LedgerService,
     private readonly redemptions: RedemptionsService,
+    private readonly notifications: NotificationService,
   ) {}
 
   async approve(adminId: string, redemptionId: string): Promise<ApproveResult> {
@@ -128,8 +130,12 @@ export class AdminRedemptionsService {
     );
     const fresh = await this.load(redemptionId);
     if (outcome.status === 'issued') {
+      // finalizeIssued already wrote the inbox row; push the status change too.
+      await this.notifyStatus(fresh, 'issued');
       return { outcome: 'issued', redemption: toAdminView(fresh) };
     }
+    // Approved but not yet fulfilled (out of stock / retrying): tell the user.
+    await this.notifyStatus(fresh, 'approved');
     return {
       outcome: 'approved_pending',
       redemption: toAdminView(fresh),
@@ -191,7 +197,47 @@ export class AdminRedemptionsService {
       }
     });
 
-    return toAdminView(await this.load(redemptionId));
+    const rejected = await this.load(redemptionId);
+    // The reject transaction already wrote the inbox row; push the status too.
+    await this.notifyStatus(rejected, 'rejected', reason);
+    return toAdminView(rejected);
+  }
+
+  /**
+   * Deliver a redemption status-change notification (E2). For 'approved' this
+   * also creates an inbox row; 'issued'/'rejected' already have their inbox row
+   * written transactionally, so this is a push-only complement. Never throws.
+   */
+  private async notifyStatus(
+    redemption: RedemptionFull,
+    status: 'approved' | 'issued' | 'rejected',
+    reason?: string,
+  ): Promise<void> {
+    try {
+      const payload = {
+        userId: redemption.userId,
+        status,
+        brand: redemption.giftCard.brand,
+        denomination: redemption.giftCard.denomination,
+        reason,
+      };
+      if (status === 'approved') {
+        await this.notifications.onRedemptionStatus(payload);
+      } else {
+        await this.notifications.push({
+          userId: redemption.userId,
+          type: `redemption_${status}`,
+          title: status === 'issued' ? 'Gift card ready' : 'Redemption rejected',
+          body:
+            status === 'issued'
+              ? `Your ${redemption.giftCard.brand} ₹${redemption.giftCard.denomination} gift card has been issued.`
+              : `Your ${redemption.giftCard.brand} ₹${redemption.giftCard.denomination} redemption was rejected${reason ? `: ${reason}` : ''}.`,
+          data: { kind: 'redemption', status },
+        });
+      }
+    } catch (err) {
+      this.logger.warn(`redemption status notification failed: ${(err as Error).message}`);
+    }
   }
 
   /** C3.3 — review queue, keyset-paginated, optional status filter. */

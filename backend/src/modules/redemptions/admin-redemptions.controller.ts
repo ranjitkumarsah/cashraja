@@ -1,3 +1,4 @@
+import { ApiTags } from '@nestjs/swagger';
 import {
   Body,
   Controller,
@@ -26,6 +27,7 @@ import { RedemptionQueryDto } from './dto/redemption-query.dto';
  * reviewers and super-admins may both view, approve, reject and export (RBAC
  * matrix §2.3), so no @Roles() gate beyond authentication is required here.
  */
+@ApiTags('admin')
 @Controller('admin/redemptions')
 @UseGuards(AdminAuthGuard, RolesGuard)
 export class AdminRedemptionsController {

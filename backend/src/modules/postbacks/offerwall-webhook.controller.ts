@@ -1,3 +1,4 @@
+import { ApiTags } from '@nestjs/swagger';
 import {
   Controller,
   Get,
@@ -33,6 +34,7 @@ import { IntakeResult, PostbackIntakeService } from './postback-intake.service';
  * persist+enqueue → 200 fast (no heavy work inline; NFR §9 budget 500ms).
  */
 @SkipThrottle()
+@ApiTags('webhooks')
 @Controller('webhooks/offerwall')
 export class OfferwallWebhookController {
   private readonly logger = new Logger(OfferwallWebhookController.name);

@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable, Optional } from '@nestjs/common';
 import { LedgerSourceType } from '@prisma/client';
 import { AppConfigService } from '../../common/app-config/app-config.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -9,6 +9,7 @@ import {
   istYesterdayString,
 } from '../../common/time/ist-day';
 import { LedgerService } from '../ledger/ledger.service';
+import { NOTIFICATION_HOOK, NotificationHook } from '../notifications/notification-hook';
 import { ReferralService } from '../referral/referral.service';
 
 const STREAK_REWARDS_KEY = 'streak.day_rewards';
@@ -53,6 +54,7 @@ export class StreakService {
     private readonly ledger: LedgerService,
     private readonly appConfig: AppConfigService,
     private readonly referral: ReferralService,
+    @Optional() @Inject(NOTIFICATION_HOOK) private readonly notifications?: NotificationHook,
   ) {}
 
   async getState(userId: string): Promise<StreakStateView> {
@@ -99,6 +101,13 @@ export class StreakService {
       userId,
       amount: next.reward,
       sourceLedgerId: credit.entry.id,
+    });
+
+    await this.notifications?.onCredited({
+      userId,
+      coins: next.reward,
+      sourceType: LedgerSourceType.streak,
+      sourceRefId: credit.entry.id,
     });
 
     return {

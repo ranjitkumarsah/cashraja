@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import {
   AdminAuthService,
@@ -13,6 +14,7 @@ import { TotpVerifyDto } from './dto/totp-verify.dto';
  * (ARCHITECTURE_PLAN §2.5); the rest of the API keeps the generous global
  * default for now.
  */
+@ApiTags('admin-auth')
 @Controller('admin-auth')
 export class AdminAuthController {
   constructor(private readonly adminAuth: AdminAuthService) {}

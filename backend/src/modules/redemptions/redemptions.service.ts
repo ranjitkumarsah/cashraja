@@ -8,21 +8,15 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { ALERT_SERVICE, AlertService } from '../../common/alerts/alert.service';
-import { AppConfigService } from '../../common/app-config/app-config.service';
 import { AUDIT_ACTIONS, writeAuditLog } from '../../common/audit/admin-audit';
 import { GiftCardCryptoService } from '../../common/crypto/giftcard-crypto.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { GIFT_CARD_PROVIDER, GiftCardProvider } from '../../providers/giftcard/giftcard-provider';
+import { FraudEngineService } from '../fraud/fraud-engine.service';
 import { InsufficientBalanceError } from '../ledger/ledger.errors';
 import { LedgerService } from '../ledger/ledger.service';
 import { REDEMPTION_QUEUE, RedemptionQueue } from './redemption-queue';
 import { GiftCardUnavailableException, UserBannedException } from './redemptions.errors';
-
-export const ACCOUNT_AGE_CONFIG = {
-  key: 'redemption.min_account_age_hours',
-  field: 'hours',
-  fallback: 72,
-} as const;
 
 export interface RedemptionView {
   id: string;
@@ -57,10 +51,10 @@ export class RedemptionsService {
     private readonly prisma: PrismaService,
     private readonly ledger: LedgerService,
     private readonly crypto: GiftCardCryptoService,
-    private readonly appConfig: AppConfigService,
     @Inject(GIFT_CARD_PROVIDER) private readonly provider: GiftCardProvider,
     @Inject(REDEMPTION_QUEUE) private readonly retryQueue: RedemptionQueue,
     @Inject(ALERT_SERVICE) private readonly alerts: AlertService,
+    private readonly fraudEngine: FraudEngineService,
   ) {}
 
   /**
@@ -105,19 +99,28 @@ export class RedemptionsService {
       throw err;
     }
 
-    // Fraud pre-screen (annotate, don't block): a young account requesting is
-    // forced to manual review rather than the fast path.
-    const minAgeHours = await this.appConfig.getNumber(
-      ACCOUNT_AGE_CONFIG.key,
-      ACCOUNT_AGE_CONFIG.field,
-      ACCOUNT_AGE_CONFIG.fallback,
-    );
+    // Fraud pre-screen (rule 5, annotate — don't block): a young account is
+    // routed to manual review; a young account requesting the MAX-value card
+    // additionally opens a fraud_flag (FraudEngineService is the single writer).
     const ageHours = (Date.now() - user.createdAt.getTime()) / 3_600_000;
-    const initialStatus =
-      ageHours < minAgeHours ? RedemptionStatus.under_review : RedemptionStatus.requested;
+    const isMaxValue = await this.isMaxValueCard(giftCard.coinCost);
+    const screen = await this.fraudEngine
+      .screenRedemption({ userId, coinCost: giftCard.coinCost, isMaxValue, accountAgeHours: ageHours })
+      .catch((err: unknown) => {
+        // A pre-screen failure must never block a paid-for redemption.
+        this.logger.error(
+          `redemption fraud pre-screen failed for ${redemptionId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+        return { forceReview: false };
+      });
+    const initialStatus = screen.forceReview
+      ? RedemptionStatus.under_review
+      : RedemptionStatus.requested;
     if (initialStatus === RedemptionStatus.under_review) {
       this.logger.warn(
-        `redemption ${redemptionId} routed to under_review (account age ${ageHours.toFixed(1)}h < ${minAgeHours}h)`,
+        `redemption ${redemptionId} routed to under_review (account age ${ageHours.toFixed(1)}h, maxValue=${isMaxValue})`,
       );
     }
 
@@ -266,6 +269,15 @@ export class RedemptionsService {
       message: `Redemption ${redemptionId} approved but not fulfilled (${reason}) — queued for retry`,
       details: { redemptionId, reason },
     });
+  }
+
+  /** True when coinCost is the maximum coin_cost across the active catalog. */
+  private async isMaxValueCard(coinCost: number): Promise<boolean> {
+    const max = await this.prisma.giftCard.aggregate({
+      where: { isActive: true },
+      _max: { coinCost: true },
+    });
+    return coinCost >= (max._max.coinCost ?? coinCost);
   }
 
   /** Map a redemption to its API view. Decrypts the code only for the owner. */

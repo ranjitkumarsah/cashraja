@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { FraudModule } from '../fraud/fraud.module';
 import { GiftCardsModule } from '../gift-cards/gift-cards.module';
 import { LedgerModule } from '../ledger/ledger.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { AdminRedemptionsController } from './admin-redemptions.controller';
 import { AdminRedemptionsService } from './admin-redemptions.service';
 import { BullRedemptionQueue, REDEMPTION_QUEUE, RedemptionQueue } from './redemption-queue';
@@ -15,7 +17,7 @@ import { RedemptionsService } from './redemptions.service';
  * LedgerModule supplies reserve/reverse. Crypto/alerts/app-config are global.
  */
 @Module({
-  imports: [LedgerModule, GiftCardsModule],
+  imports: [LedgerModule, GiftCardsModule, FraudModule, NotificationsModule],
   controllers: [RedemptionsController, AdminRedemptionsController],
   providers: [
     {

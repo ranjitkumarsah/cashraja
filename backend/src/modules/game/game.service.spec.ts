@@ -5,6 +5,7 @@ import {
   FakeAppConfig,
   FakeEngagementLedger,
   RecordingFraudSignal,
+  RecordingNotificationHook,
   RecordingReferral,
 } from '../../common/testing/engagement-fakes';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -77,6 +78,7 @@ describe('GameService', () => {
   let config: FakeAppConfig;
   let referral: RecordingReferral;
   let fraud: RecordingFraudSignal;
+  let notifications: RecordingNotificationHook;
   let service: GameService;
   const userId = randomUUID();
 
@@ -90,12 +92,14 @@ describe('GameService', () => {
       .set('game.round_expiry_seconds', { seconds: 120 });
     referral = new RecordingReferral();
     fraud = new RecordingFraudSignal();
+    notifications = new RecordingNotificationHook();
     service = new GameService(
       prisma as unknown as PrismaService,
       ledger as unknown as LedgerService,
       config as unknown as AppConfigService,
       referral as unknown as ReferralService,
       fraud,
+      notifications,
     );
   });
 
@@ -138,6 +142,9 @@ describe('GameService', () => {
     expect(referral.calls).toHaveLength(1);
     expect(referral.calls[0]).toMatchObject({ userId, amount: 20 });
     expect(referral.calls[0].sourceLedgerId).toEqual(expect.any(String));
+    // credit notification fired for the earning
+    expect(notifications.credited).toHaveLength(1);
+    expect(notifications.credited[0]).toMatchObject({ userId, coins: 20, sourceType: 'game' });
   });
 
   it('rejects replay: a completed round cannot be completed again (409)', async () => {

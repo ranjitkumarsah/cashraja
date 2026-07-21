@@ -1,3 +1,4 @@
+import { ApiTags } from '@nestjs/swagger';
 import {
   Controller,
   Get,
@@ -21,6 +22,7 @@ export interface MeView {
 }
 
 /** GET /api/me — profile + referral code (B4.3). */
+@ApiTags('users')
 @Controller('me')
 @UseGuards(JwtAuthGuard)
 export class UsersController {

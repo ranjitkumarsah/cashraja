@@ -1,3 +1,4 @@
+import { ApiTags } from '@nestjs/swagger';
 import {
   Controller,
   Get,
@@ -12,6 +13,7 @@ import { AuthenticatedUser, CurrentUser, JwtAuthGuard } from '../../common/auth'
 import { BonusPlayResult, BonusService, BonusStateView } from './bonus.service';
 
 /** D3 — scratch/spin state + server-rolled play, JWT-guarded. */
+@ApiTags('bonus')
 @Controller('bonus')
 @UseGuards(JwtAuthGuard)
 export class BonusController {

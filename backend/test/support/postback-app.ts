@@ -84,6 +84,10 @@ export async function createPostbackTestApp(): Promise<PostbackTestApp> {
           try {
             await prisma.offerCompletion.deleteMany({ where: { userId: { in: createdUserIds } } });
             await prisma.adImpression.deleteMany({ where: { userId: { in: createdUserIds } } });
+            // Phase E: credit paths now emit notifications + may open fraud flags.
+            await prisma.notification.deleteMany({ where: { userId: { in: createdUserIds } } });
+            await prisma.fcmToken.deleteMany({ where: { userId: { in: createdUserIds } } });
+            await prisma.fraudFlag.deleteMany({ where: { userId: { in: createdUserIds } } });
             await prisma.coinLedger.deleteMany({ where: { userId: { in: createdUserIds } } });
             await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
             break;

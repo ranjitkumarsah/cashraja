@@ -4,6 +4,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   FakeAppConfig,
   FakeEngagementLedger,
+  RecordingNotificationHook,
   RecordingReferral,
 } from '../../common/testing/engagement-fakes';
 import { istDateString, istDateStringToDate, istYesterdayString } from '../../common/time/ist-day';
@@ -45,6 +46,7 @@ describe('StreakService', () => {
   let ledger: FakeEngagementLedger;
   let config: FakeAppConfig;
   let referral: RecordingReferral;
+  let notifications: RecordingNotificationHook;
   let service: StreakService;
   const userId = randomUUID();
   const REWARDS = [5, 10, 15, 20, 30, 40, 50];
@@ -54,11 +56,13 @@ describe('StreakService', () => {
     ledger = new FakeEngagementLedger();
     config = new FakeAppConfig().set('streak.day_rewards', { days: REWARDS });
     referral = new RecordingReferral();
+    notifications = new RecordingNotificationHook();
     service = new StreakService(
       prisma as unknown as PrismaService,
       ledger as unknown as LedgerService,
       config as unknown as AppConfigService,
       referral as unknown as ReferralService,
+      notifications,
     );
   });
 
@@ -69,6 +73,8 @@ describe('StreakService', () => {
     expect(result.new_balance).toBe(REWARDS[0]);
     expect(ledger.calls[0].idempotencyKey).toBe(`streak:${userId}:${istDateString()}`);
     expect(referral.calls).toHaveLength(1);
+    expect(notifications.credited).toHaveLength(1);
+    expect(notifications.credited[0]).toMatchObject({ userId, coins: REWARDS[0], sourceType: 'streak' });
   });
 
   it('a claim the day after continues the streak (day 2 reward)', async () => {

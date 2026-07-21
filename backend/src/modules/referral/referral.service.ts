@@ -1,8 +1,9 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { LedgerSourceType, Prisma, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { FRAUD_SIGNAL_HOOK, FraudSignalHook } from '../fraud/fraud-signal.hook';
 import { LedgerService } from '../ledger/ledger.service';
+import { NOTIFICATION_HOOK, NotificationHook } from '../notifications/notification-hook';
 
 export interface OnUserEarnedParams {
   /** the user who just earned coins (the potential referred user) */
@@ -44,6 +45,7 @@ export class ReferralService {
     private readonly prisma: PrismaService,
     private readonly ledger: LedgerService,
     @Inject(FRAUD_SIGNAL_HOOK) private readonly fraudSignal: FraudSignalHook,
+    @Optional() @Inject(NOTIFICATION_HOOK) private readonly notifications?: NotificationHook,
   ) {}
 
   /**
@@ -93,7 +95,7 @@ export class ReferralService {
       await this.fraudSignal.report({
         userId,
         rule: 'self_referral',
-        details: { referralId: referral.id },
+        details: { referralId: referral.id, referrerId: referral.referrerId },
       });
       return;
     }
@@ -102,7 +104,23 @@ export class ReferralService {
       await this.fraudSignal.report({
         userId,
         rule: 'self_referral',
-        details: { referralId: referral.id, referredStatus: referred.status },
+        details: {
+          referralId: referral.id,
+          referrerId: referral.referrerId,
+          referredStatus: referred.status,
+        },
+      });
+      return;
+    }
+
+    // Rule 3 (self-referral): referrer and referred on the same physical device
+    // → block the bonus and flag both accounts. IP isn't retained per-earning,
+    // so the device fingerprint is the durable shared-identity signal here.
+    if (await this.sharesDevice(referral.referrerId, userId)) {
+      await this.fraudSignal.report({
+        userId,
+        rule: 'self_referral',
+        details: { referralId: referral.id, referrerId: referral.referrerId, sharedDevice: true },
       });
       return;
     }
@@ -135,6 +153,30 @@ export class ReferralService {
       if (this.isUniqueViolation(err)) return;
       throw err;
     }
+
+    // Notify the referrer of their bonus credit (best-effort, async).
+    await this.notifications?.onCredited({
+      userId: referral.referrerId,
+      coins: bonus,
+      sourceType: LedgerSourceType.referral,
+      sourceRefId: bonusLedgerId,
+    });
+  }
+
+  /** True when the two users have any device fingerprint in common. */
+  private async sharesDevice(referrerId: string, referredId: string): Promise<boolean> {
+    const [referrerDevices, referredDevices] = await Promise.all([
+      this.prisma.device.findMany({
+        where: { userId: referrerId },
+        select: { deviceFingerprint: true },
+      }),
+      this.prisma.device.findMany({
+        where: { userId: referredId },
+        select: { deviceFingerprint: true },
+      }),
+    ]);
+    const referrerFps = new Set(referrerDevices.map((d) => d.deviceFingerprint));
+    return referredDevices.some((d) => referrerFps.has(d.deviceFingerprint));
   }
 
   async myCode(userId: string): Promise<MyCodeView> {

@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthenticatedUser, CurrentUser, JwtAuthGuard } from '../../common/auth';
 import { CreateRedemptionDto } from './dto/create-redemption.dto';
@@ -9,6 +10,7 @@ import { RedemptionsService, RedemptionView } from './redemptions.service';
  * so it carries a stricter throttle than the generous global default
  * (ARCHITECTURE_PLAN §2.5).
  */
+@ApiTags('redemptions')
 @Controller('redemptions')
 @UseGuards(JwtAuthGuard)
 export class RedemptionsController {

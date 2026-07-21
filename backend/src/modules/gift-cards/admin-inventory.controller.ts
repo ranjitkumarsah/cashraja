@@ -1,3 +1,4 @@
+import { ApiTags } from '@nestjs/swagger';
 import {
   Body,
   Controller,
@@ -30,6 +31,7 @@ import {
  * (RBAC matrix §2.3 — "gift-card inventory upload / reveal codes"). Codes are
  * masked everywhere except the audited reveal endpoint.
  */
+@ApiTags('admin')
 @Controller('admin/inventory')
 @UseGuards(AdminAuthGuard, RolesGuard)
 @Roles(AdminRole.super_admin)

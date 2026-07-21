@@ -57,6 +57,13 @@ export const envSchema = z
 
     // Reconciliation / fraud-spike alert destination (Slack-compatible webhook). Empty = console alerts.
     ALERT_WEBHOOK_URL: z.union([z.string().url(), z.literal('')]).default(''),
+
+    // ── Notifications (Phase E) ──
+    // Push delivery driver: console (log-only dev default) | mock (tests) |
+    // firebase (real firebase-admin messaging, NEEDS_CREDENTIALS).
+    FCM_DRIVER: z.enum(['console', 'mock', 'firebase']).default('console'),
+    // Daily 19:00 IST streak reminder push. Off by default (opt-in per env).
+    STREAK_REMINDER_ENABLED: z.enum(['true', 'false']).default('false'),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production') {

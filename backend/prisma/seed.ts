@@ -34,6 +34,13 @@ const CONFIG_DEFAULTS: Array<{ key: string; value: object }> = [
   { key: 'referral.bonus_percent', value: { percent: 10, window_days: 30 } },
   { key: 'streak.day_rewards', value: { days: [5, 10, 15, 20, 30, 40, 50] } },
   { key: 'fraud.device_account_limits', value: { flag_over: 2, block_over: 3 } },
+  // Phase E — offer-completion velocity window (Redis sliding-window rule).
+  { key: 'fraud.offer_velocity', value: { max_completions: 20, window_minutes: 10 } },
+  // Phase E — fraud severity → auto-action map (none | flagged_for_review | auto_banned).
+  {
+    key: 'fraud.severity_actions',
+    value: { low: 'none', medium: 'flagged_for_review', high: 'auto_banned' },
+  },
   { key: 'redemption.min_account_age_hours', value: { hours: 72 } },
   // Phase C — gift-card inventory low-stock alert threshold (per brand+denom)
   { key: 'inventory.low_stock_threshold', value: { threshold: 5 } },

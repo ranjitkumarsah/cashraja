@@ -1,3 +1,4 @@
+import { ApiTags } from '@nestjs/swagger';
 import {
   Body,
   Controller,
@@ -21,6 +22,7 @@ import { AdminAdminsService, AdminView, CreateAdminResult } from './admin-admins
 import { CreateAdminDto } from './dto/create-admin.dto';
 
 /** C3.6 — admin account management. Super-admin only (whole controller). */
+@ApiTags('admin')
 @Controller('admin/admins')
 @UseGuards(AdminAuthGuard, RolesGuard)
 @Roles(AdminRole.super_admin)

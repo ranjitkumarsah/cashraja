@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { FraudModule } from '../fraud/fraud.module';
 import { LedgerModule } from '../ledger/ledger.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { ReferralController } from './referral.controller';
 import { ReferralService } from './referral.service';
 
@@ -10,7 +11,7 @@ import { ReferralService } from './referral.service';
  * fan-out without importing each other.
  */
 @Module({
-  imports: [LedgerModule, FraudModule],
+  imports: [LedgerModule, FraudModule, NotificationsModule],
   controllers: [ReferralController],
   providers: [ReferralService],
   exports: [ReferralService],

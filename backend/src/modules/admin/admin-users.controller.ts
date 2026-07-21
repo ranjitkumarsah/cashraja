@@ -1,3 +1,4 @@
+import { ApiTags } from '@nestjs/swagger';
 import {
   Body,
   Controller,
@@ -35,6 +36,7 @@ import { UserQueryDto } from './dto/user-query.dto';
  * mutating routes (adjust-balance, ban, unban) are super-admin only (RBAC
  * matrix §2.3), enforced server-side by @Roles + RolesGuard.
  */
+@ApiTags('admin')
 @Controller('admin/users')
 @UseGuards(AdminAuthGuard, RolesGuard)
 export class AdminUsersController {

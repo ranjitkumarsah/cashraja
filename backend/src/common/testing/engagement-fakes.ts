@@ -94,6 +94,25 @@ export class RecordingReferral {
   }
 }
 
+/** Records post-credit notifications fired by the engagement services. */
+export class RecordingNotificationHook {
+  readonly credited: Array<{
+    userId: string;
+    coins: number;
+    sourceType: string;
+    sourceRefId: string;
+  }> = [];
+
+  async onCredited(notification: {
+    userId: string;
+    coins: number;
+    sourceType: string;
+    sourceRefId: string;
+  }): Promise<void> {
+    this.credited.push(notification);
+  }
+}
+
 /** Records fraud detection signals fired by the engagement services. */
 export class RecordingFraudSignal {
   readonly signals: Array<{ userId: string; rule: string; details?: Record<string, unknown> }> = [];

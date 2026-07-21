@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { BonusKind } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { FakeEngagementLedger, RecordingReferral } from '../../common/testing/engagement-fakes';
+import {
+  FakeEngagementLedger,
+  RecordingNotificationHook,
+  RecordingReferral,
+} from '../../common/testing/engagement-fakes';
 import { LedgerService } from '../ledger/ledger.service';
 import { ReferralService } from '../referral/referral.service';
 import { cryptoRandomInt, PrizeEntry, RandomIntFn, rollWeighted } from './bonus-roll';
@@ -69,12 +73,14 @@ function buildService(
   ledger: FakeEngagementLedger,
   referral: RecordingReferral,
   rnd: RandomIntFn,
+  notifications: RecordingNotificationHook = new RecordingNotificationHook(),
 ): BonusService {
   return new BonusService(
     prisma as unknown as PrismaService,
     ledger as unknown as LedgerService,
     referral as unknown as ReferralService,
     rnd,
+    notifications,
   );
 }
 
@@ -93,13 +99,16 @@ describe('BonusService', () => {
 
   it('credits the rolled prize and reports remaining attempts', async () => {
     // rnd returns 65 → skips 0(30) and 2(35) cumulative 65, lands on 5(20).
-    const service = buildService(prisma, ledger, referral, () => 65);
+    const notifications = new RecordingNotificationHook();
+    const service = buildService(prisma, ledger, referral, () => 65, notifications);
     const result = await service.play(userId, BonusKind.scratch);
     expect(result.prize_coins).toBe(5);
     expect(result.new_balance).toBe(5);
     expect(result.attempts_remaining).toBe(2);
     expect(ledger.calls[0].idempotencyKey).toBe(`bonus:${prisma.attempts[0].id}`);
     expect(referral.calls).toHaveLength(1);
+    expect(notifications.credited).toHaveLength(1);
+    expect(notifications.credited[0]).toMatchObject({ userId, coins: 5, sourceType: 'bonus' });
   });
 
   it('a zero-coin prize records the attempt but writes no ledger row', async () => {

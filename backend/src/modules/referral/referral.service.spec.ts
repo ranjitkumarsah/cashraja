@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { Prisma, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { FakeEngagementLedger, RecordingFraudSignal } from '../../common/testing/engagement-fakes';
+import {
+  FakeEngagementLedger,
+  RecordingFraudSignal,
+  RecordingNotificationHook,
+} from '../../common/testing/engagement-fakes';
 import { LedgerService } from '../ledger/ledger.service';
 import { ReferralService } from './referral.service';
 
@@ -38,6 +42,11 @@ class FakeReferralPrisma {
   referrals: FakeReferral[] = [];
   earnings: FakeReferralEarning[] = [];
   users = new Map<string, FakeUserRow>();
+  devices: Array<{ userId: string; deviceFingerprint: string }> = [];
+
+  linkDevice(userId: string, deviceFingerprint: string): void {
+    this.devices.push({ userId, deviceFingerprint });
+  }
 
   addUser(status: UserStatus = UserStatus.active): FakeUserRow {
     const row: FakeUserRow = {
@@ -96,6 +105,15 @@ class FakeReferralPrisma {
     },
   };
 
+  readonly device = {
+    findMany: (args: { where: { userId: string }; select?: Record<string, boolean> }) =>
+      Promise.resolve(
+        this.devices
+          .filter((d) => d.userId === args.where.userId)
+          .map((d) => ({ deviceFingerprint: d.deviceFingerprint })),
+      ),
+  };
+
   readonly coinLedger = {
     aggregate: (args: { where: { userId: string; sourceType: string }; _sum: unknown }) => {
       const row = this.users.get(args.where.userId);
@@ -116,16 +134,19 @@ describe('ReferralService', () => {
   let prisma: FakeReferralPrisma;
   let ledger: FakeEngagementLedger;
   let fraud: RecordingFraudSignal;
+  let notifications: RecordingNotificationHook;
   let service: ReferralService;
 
   beforeEach(() => {
     prisma = new FakeReferralPrisma();
     ledger = new FakeEngagementLedger();
     fraud = new RecordingFraudSignal();
+    notifications = new RecordingNotificationHook();
     service = new ReferralService(
       prisma as unknown as PrismaService,
       ledger as unknown as LedgerService,
       fraud,
+      notifications,
     );
   });
 
@@ -145,6 +166,13 @@ describe('ReferralService', () => {
     });
     expect(prisma.earnings).toHaveLength(1);
     expect(prisma.earnings[0]).toMatchObject({ sourceLedgerId: 'src-1' });
+    // referrer is notified of their bonus credit
+    expect(notifications.credited).toHaveLength(1);
+    expect(notifications.credited[0]).toMatchObject({
+      userId: referrer.id,
+      coins: 10,
+      sourceType: 'referral',
+    });
   });
 
   it('uses the snapshot percent from the referral row, not any current default', async () => {
@@ -192,6 +220,35 @@ describe('ReferralService', () => {
     await service.onUserEarned({ userId: self.id, amount: 100, sourceLedgerId: 'src-6' });
     expect(ledger.calls).toHaveLength(0);
     expect(fraud.signals[0]).toMatchObject({ rule: 'self_referral' });
+  });
+
+  it('blocks the bonus and signals self-referral when referrer and referred share a device', async () => {
+    const referrer = prisma.addUser();
+    const referred = prisma.addUser();
+    prisma.addReferral(referrer.id, referred.id, 10, YEAR_AHEAD);
+    // Both accounts fingerprinted to the same physical device.
+    prisma.linkDevice(referrer.id, 'device-abc');
+    prisma.linkDevice(referred.id, 'device-abc');
+
+    await service.onUserEarned({ userId: referred.id, amount: 100, sourceLedgerId: 'src-dev' });
+
+    expect(ledger.calls).toHaveLength(0);
+    expect(prisma.earnings).toHaveLength(0);
+    expect(fraud.signals[0]).toMatchObject({
+      rule: 'self_referral',
+      details: { sharedDevice: true, referrerId: referrer.id },
+    });
+  });
+
+  it('pays out normally when referrer and referred are on different devices', async () => {
+    const referrer = prisma.addUser();
+    const referred = prisma.addUser();
+    prisma.addReferral(referrer.id, referred.id, 10, YEAR_AHEAD);
+    prisma.linkDevice(referrer.id, 'device-1');
+    prisma.linkDevice(referred.id, 'device-2');
+
+    await service.onUserEarned({ userId: referred.id, amount: 100, sourceLedgerId: 'src-diff' });
+    expect(ledger.calls).toHaveLength(1);
   });
 
   it('is idempotent: the same source earning never double-pays', async () => {

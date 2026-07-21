@@ -1,3 +1,4 @@
+import { ApiTags } from '@nestjs/swagger';
 import {
   Body,
   Controller,
@@ -19,6 +20,7 @@ import { ResolveFraudDto } from './dto/resolve-fraud.dto';
  * C3.7 — fraud-flag review queue. Reviewers and super-admins both view and
  * resolve (RBAC matrix §2.3 — "view flags"), so no @Roles gate beyond admin auth.
  */
+@ApiTags('admin')
 @Controller('admin/fraud-flags')
 @UseGuards(AdminAuthGuard, RolesGuard)
 export class AdminFraudController {

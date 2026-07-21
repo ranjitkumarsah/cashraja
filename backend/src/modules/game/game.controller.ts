@@ -1,10 +1,12 @@
 import { Body, Controller, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AuthenticatedUser, CurrentUser, JwtAuthGuard } from '../../common/auth';
 import { RoundCompleteDto } from './dto/round-complete.dto';
 import { RoundStartDto } from './dto/round-start.dto';
 import { GameService, RoundCompleteResult, RoundStartResult } from './game.service';
 
 /** D1 — server-authoritative game rounds, JWT-guarded. */
+@ApiTags('game')
 @Controller('game')
 @UseGuards(JwtAuthGuard)
 export class GameController {

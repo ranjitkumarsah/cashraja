@@ -1,8 +1,10 @@
 import { Controller, Get, Param, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AuthenticatedUser, CurrentUser, JwtAuthGuard } from '../../common/auth';
 import { LaunchResult, OfferListItem, OffersService } from './offers.service';
 
 /** TRD §3.4 — offers list + signed launch, JWT-guarded. */
+@ApiTags('offers')
 @Controller('offers')
 @UseGuards(JwtAuthGuard)
 export class OffersController {

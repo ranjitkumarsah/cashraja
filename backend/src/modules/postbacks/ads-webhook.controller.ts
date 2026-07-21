@@ -1,3 +1,4 @@
+import { ApiTags } from '@nestjs/swagger';
 import {
   Controller,
   Get,
@@ -24,6 +25,7 @@ import { toPostbackRequest } from './offerwall-webhook.controller';
  * AdMob/AppLovin/LevelPlay SSV callbacks are GETs.
  */
 @SkipThrottle()
+@ApiTags('webhooks')
 @Controller('webhooks/ads')
 export class AdsWebhookController {
   constructor(

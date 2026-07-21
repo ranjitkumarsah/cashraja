@@ -1,3 +1,4 @@
+import { ApiTags } from '@nestjs/swagger';
 import {
   Body,
   Controller,
@@ -25,6 +26,7 @@ import { PaginationQueryDto } from './dto/pagination-query.dto';
 import { UpdateOfferDto } from './dto/update-offer.dto';
 
 /** C3.4 — offer management. List + logs are reviewer-viewable; edits super-admin. */
+@ApiTags('admin')
 @Controller('admin')
 @UseGuards(AdminAuthGuard, RolesGuard)
 export class AdminOffersController {

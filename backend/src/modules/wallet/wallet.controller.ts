@@ -1,4 +1,5 @@
 import { Controller, Get, Query, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AuthenticatedUser, CurrentUser, JwtAuthGuard } from '../../common/auth';
 import { LedgerQueryDto } from './dto/ledger-query.dto';
 import { LedgerPage, WalletService, WalletView } from './wallet.service';
@@ -8,6 +9,7 @@ import { LedgerPage, WalletService, WalletView } from './wallet.service';
  * wallet reads are cheap cached lookups, no stricter limit needed (see
  * backend README rate-limit notes).
  */
+@ApiTags('wallet')
 @Controller('wallet')
 @UseGuards(JwtAuthGuard)
 export class WalletController {

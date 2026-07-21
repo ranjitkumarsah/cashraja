@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AdminRole } from '@prisma/client';
 import {
   AdminAuthGuard,
@@ -15,6 +16,7 @@ import { GiftCardsService, GiftCardView } from './gift-cards.service';
  * Admin gift-card catalog (C1.1). Viewing is open to reviewers; creating /
  * editing is super-admin only (RBAC matrix §2.3 — "offer/config management").
  */
+@ApiTags('admin')
 @Controller('admin/gift-cards')
 @UseGuards(AdminAuthGuard, RolesGuard)
 export class AdminGiftCardsController {

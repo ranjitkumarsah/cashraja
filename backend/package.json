@@ -24,7 +24,8 @@
     "test:integration": "jest --testPathPattern \"/test/\" --runInBand",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "openapi:emit": "ts-node scripts/emit-openapi.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -36,6 +37,7 @@
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/schedule": "^5.0.0",
+    "@nestjs/swagger": "^11.4.6",
     "@nestjs/throttler": "^6.4.0",
     "@prisma/client": "^6.5.0",
     "bcryptjs": "^2.4.3",
