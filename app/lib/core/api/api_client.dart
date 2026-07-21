@@ -4,10 +4,13 @@ import '../config/app_config.dart';
 import 'api_exception.dart';
 import 'auth_interceptor.dart';
 import 'models/auth_tokens.dart';
+import 'models/bonus.dart';
+import 'models/game.dart';
 import 'models/gift_card.dart';
 import 'models/offer.dart';
 import 'models/redemption.dart';
 import 'models/referral.dart';
+import 'models/streak.dart';
 import 'models/user.dart';
 import 'models/wallet.dart';
 import 'token_store.dart';
@@ -155,6 +158,54 @@ class ApiClient {
   Future<ReferralStats> referralStats() async {
     final Map<String, dynamic> body = await _get('/referral/stats');
     return ReferralStats.fromJson(body);
+  }
+
+  // ---- Game (D1) ---------------------------------------------------------
+
+  Future<GameRound> startGameRound(GameDifficulty difficulty) async {
+    final Map<String, dynamic> body = await _post(
+      '/game/round-start',
+      data: <String, dynamic>{'difficulty': difficulty.wire},
+    );
+    return GameRound.fromJson(body);
+  }
+
+  Future<RoundResult> completeGameRound(
+    String roundId, {
+    required int clientScore,
+  }) async {
+    final Map<String, dynamic> body = await _post(
+      '/game/round-complete',
+      data: <String, dynamic>{
+        'round_id': roundId,
+        'client_score': clientScore,
+      },
+    );
+    return RoundResult.fromJson(body);
+  }
+
+  // ---- Streak (D2) -------------------------------------------------------
+
+  Future<StreakState> streak() async {
+    final Map<String, dynamic> body = await _get('/streak');
+    return StreakState.fromJson(body);
+  }
+
+  Future<StreakClaimResult> claimStreak() async {
+    final Map<String, dynamic> body = await _post('/streak/claim');
+    return StreakClaimResult.fromJson(body);
+  }
+
+  // ---- Scratch / Spin bonus (D3) -----------------------------------------
+
+  Future<BonusState> bonusState(BonusKind kind) async {
+    final Map<String, dynamic> body = await _get('/bonus/${kind.wire}');
+    return BonusState.fromJson(body, kind);
+  }
+
+  Future<BonusPlayResult> playBonus(BonusKind kind) async {
+    final Map<String, dynamic> body = await _post('/bonus/${kind.wire}/play');
+    return BonusPlayResult.fromJson(body);
   }
 
   // ---- Low-level helpers -------------------------------------------------

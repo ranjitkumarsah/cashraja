@@ -6,8 +6,10 @@ import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/presentation/attestation_screen.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/onboarding_screen.dart';
+import '../../features/bonus/presentation/bonus_screen.dart';
+import '../../features/game/presentation/game_screen.dart';
 import '../../features/home/presentation/home_shell.dart';
-import '../../features/placeholders/placeholder_screens.dart';
+import '../../features/invite/presentation/invite_screen.dart';
 import '../../features/splash/splash_screen.dart';
 
 abstract class Routes {
@@ -78,15 +80,15 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
       ),
       GoRoute(
         path: Routes.game,
-        builder: (_, _) => const GamePlaceholderScreen(),
+        builder: (_, _) => const GameScreen(),
       ),
       GoRoute(
         path: Routes.spin,
-        builder: (_, _) => const SpinPlaceholderScreen(),
+        builder: (_, _) => const BonusScreen(),
       ),
       GoRoute(
         path: Routes.invite,
-        builder: (_, _) => const InvitePlaceholderScreen(),
+        builder: (_, _) => const InviteScreen(),
       ),
     ],
   );

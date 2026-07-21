@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/models/streak.dart';
 import '../../../core/api/models/wallet.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/raja_colors.dart';
@@ -11,7 +12,8 @@ import '../../../core/widgets/coin_balance.dart';
 import '../../../core/widgets/gradient_background.dart';
 import '../../../core/widgets/streak_flame.dart';
 import '../../ads/rewarded_ad_service.dart';
-import '../../profile/presentation/profile_controller.dart';
+import '../../streak/presentation/streak_controller.dart';
+import '../../streak/presentation/streak_sheet.dart';
 import '../../wallet/presentation/ledger_tile.dart';
 import '../../wallet/presentation/wallet_controllers.dart';
 
@@ -55,8 +57,8 @@ class HomeTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<WalletSummary> wallet =
         ref.watch(walletControllerProvider);
-    final int? streak =
-        ref.watch(profileControllerProvider).valueOrNull?.streakDays;
+    final StreakState? streak =
+        ref.watch(streakControllerProvider).valueOrNull;
 
     return Scaffold(
       body: GradientBackground(
@@ -64,12 +66,18 @@ class HomeTab extends ConsumerWidget {
           child: RefreshIndicator(
             color: RajaColors.gold,
             backgroundColor: RajaColors.surface,
-            onRefresh: () =>
-                ref.read(walletControllerProvider.notifier).refresh(),
+            onRefresh: () async {
+              await ref.read(walletControllerProvider.notifier).refresh();
+              await ref.read(streakControllerProvider.notifier).refresh();
+            },
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: <Widget>[
-                _TopBar(streakDays: streak ?? 0),
+                _TopBar(
+                  streakDays: streak?.currentCount ?? 0,
+                  claimable: streak?.claimableToday ?? false,
+                  onTap: () => showStreakSheet(context),
+                ),
                 const SizedBox(height: 16),
                 _BalanceHero(wallet: wallet),
                 const SizedBox(height: 20),
@@ -99,6 +107,41 @@ class HomeTab extends ConsumerWidget {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                AppCard(
+                  onTap: () => context.push(Routes.spin),
+                  child: const Row(
+                    children: <Widget>[
+                      Icon(Icons.casino_rounded,
+                          color: RajaColors.gold, size: 28),
+                      SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'Scratch & Spin',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Your free daily scratch card and wheel spin',
+                              style: TextStyle(
+                                color: RajaColors.textMuted,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right_rounded,
+                          color: RajaColors.textMuted),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 AppCard(
@@ -166,9 +209,15 @@ class HomeTab extends ConsumerWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.streakDays});
+  const _TopBar({
+    required this.streakDays,
+    required this.claimable,
+    required this.onTap,
+  });
 
   final int streakDays;
+  final bool claimable;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -182,14 +231,39 @@ class _TopBar extends StatelessWidget {
               ),
         ),
         const Spacer(),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: RajaColors.surfaceHigh,
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: RajaColors.border),
+            onTap: onTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: RajaColors.surfaceHigh,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: claimable ? RajaColors.gold : RajaColors.border,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  StreakFlame(days: streakDays),
+                  if (claimable) ...<Widget>[
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: RajaColors.gold,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
-          child: StreakFlame(days: streakDays),
         ),
       ],
     );
