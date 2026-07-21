@@ -28,6 +28,8 @@ const CONFIG_DEFAULTS: Array<{ key: string; value: object }> = [
   { key: 'game.daily_round_cap', value: { rounds: 20 } },
   { key: 'game.coins_per_round', value: { easy: 5, medium: 10, hard: 20 } },
   { key: 'game.min_play_seconds', value: { easy: 10, medium: 20, hard: 30 } },
+  // Phase D — server-issued game round expiry window (round-start → round-complete)
+  { key: 'game.round_expiry_seconds', value: { seconds: 120 } },
   { key: 'ads.daily_view_cap', value: { views: 10, bonus_slot: 1 } },
   { key: 'referral.bonus_percent', value: { percent: 10, window_days: 30 } },
   { key: 'streak.day_rewards', value: { days: [5, 10, 15, 20, 30, 40, 50] } },

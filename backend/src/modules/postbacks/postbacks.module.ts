@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { LedgerModule } from '../ledger/ledger.module';
 import { FraudModule } from '../fraud/fraud.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ReferralModule } from '../referral/referral.module';
 import { ProvidersModule } from '../../providers/providers.module';
 import { AdIntakeService } from './ad-intake.service';
 import { AdsWebhookController } from './ads-webhook.controller';
@@ -20,7 +21,7 @@ import { BullPostbackQueue, POSTBACK_QUEUE, PostbackQueue } from './postback-que
  * true there.
  */
 @Module({
-  imports: [LedgerModule, FraudModule, NotificationsModule, ProvidersModule],
+  imports: [LedgerModule, FraudModule, NotificationsModule, ReferralModule, ProvidersModule],
   controllers: [OfferwallWebhookController, AdsWebhookController],
   providers: [
     {

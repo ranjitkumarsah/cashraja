@@ -104,23 +104,23 @@ Each task is independently executable and maps to a build phase (A–F) from IMP
 ## D — Engagement Features
 
 ### D1 Game
-- [ ] D1.1 POST /api/game/round-start (server round_id, difficulty, expiry)
-- [ ] D1.2 POST /api/game/round-complete — anti-replay, min-play-time, daily cap, credit
-- [ ] D1.3 Tests: replay rejected, too-fast rejected, cap boundary
+- [x] D1.1 POST /api/game/round-start (server round_id, difficulty, expiry)
+- [x] D1.2 POST /api/game/round-complete — anti-replay, min-play-time, daily cap, credit
+- [x] D1.3 Tests: replay rejected, too-fast rejected, cap boundary
 
 ### D2 Streaks
-- [ ] D2.1 Streak state (IST day), claim endpoint, day-1→7 escalation from config
-- [ ] D2.2 Tests: continuation, break, double-claim rejected
+- [x] D2.1 Streak state (IST day), claim endpoint, day-1→7 escalation from config
+- [x] D2.2 Tests: continuation, break, double-claim rejected
 
 ### D3 Scratch/Spin
-- [ ] D3.1 bonus_config weighted tables (server-side) + roll endpoint
-- [ ] D3.2 Attempt limits + unlock via ad-view/streak hooks
-- [ ] D3.3 Distribution test + tamper test (client can't influence roll)
+- [x] D3.1 bonus_config weighted tables (server-side) + roll endpoint
+- [x] D3.2 Attempt limits + unlock via ad-view/streak hooks
+- [x] D3.3 Distribution test + tamper test (client can't influence roll)
 
 ### D4 Referral
-- [ ] D4.1 Code generation + GET my-code/stats · D4.2 POST redeem at signup (once, window start)
-- [ ] D4.3 Bonus fan-out on referred earnings (snapshot %, capped window, own idempotency keys)
-- [ ] D4.4 Self-referral block (device/IP) + window-expiry tests · E2E #6
+- [x] D4.1 Code generation + GET my-code/stats · D4.2 POST redeem at signup (once, window start)
+- [x] D4.3 Bonus fan-out on referred earnings (snapshot %, capped window, own idempotency keys)
+- [x] D4.4 Self-referral block (device/IP) + window-expiry tests · E2E #6
 
 ## E — Fraud, Notifications, Flutter App
 

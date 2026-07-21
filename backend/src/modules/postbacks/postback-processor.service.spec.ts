@@ -2,6 +2,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { FraudCheckInput, FraudCheckService, FraudVerdict } from '../fraud/fraud-check.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { CreditNotification, NotificationHook } from '../notifications/notification-hook';
+import { ReferralService } from '../referral/referral.service';
 import { PostbackProcessorService } from './postback-processor.service';
 import { FakeLedgerService, FakePhaseBPrisma } from './testing/fake-phase-b-prisma';
 
@@ -9,6 +10,18 @@ class RecordingNotificationHook implements NotificationHook {
   notifications: CreditNotification[] = [];
   async onCredited(notification: CreditNotification): Promise<void> {
     this.notifications.push(notification);
+  }
+}
+
+/** Records referral fan-out calls; the real service is unit-tested separately. */
+class RecordingReferral {
+  calls: Array<{ userId: string; amount: number; sourceLedgerId: string }> = [];
+  async onUserEarned(params: {
+    userId: string;
+    amount: number;
+    sourceLedgerId: string;
+  }): Promise<void> {
+    this.calls.push(params);
   }
 }
 
@@ -26,6 +39,7 @@ describe('PostbackProcessorService', () => {
   let ledger: FakeLedgerService;
   let fraud: ScriptedFraudCheck;
   let notify: RecordingNotificationHook;
+  let referral: RecordingReferral;
   let service: PostbackProcessorService;
   let userId: string;
 
@@ -34,11 +48,13 @@ describe('PostbackProcessorService', () => {
     ledger = new FakeLedgerService();
     fraud = new ScriptedFraudCheck();
     notify = new RecordingNotificationHook();
+    referral = new RecordingReferral();
     service = new PostbackProcessorService(
       prisma as unknown as PrismaService,
       ledger as unknown as LedgerService,
       fraud,
       notify,
+      referral as unknown as ReferralService,
     );
     userId = prisma.addUser();
   });
@@ -69,6 +85,9 @@ describe('PostbackProcessorService', () => {
       expect(notify.notifications).toEqual([
         { userId, coins: 150, sourceType: 'offer', sourceRefId: completion.id },
       ]);
+      // referral fan-out fired for the earning
+      expect(referral.calls).toHaveLength(1);
+      expect(referral.calls[0]).toMatchObject({ userId, amount: 150 });
     });
 
     it('re-processing a credited completion is a no-op (no double credit)', async () => {

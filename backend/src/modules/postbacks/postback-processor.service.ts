@@ -4,6 +4,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { FRAUD_CHECK_SERVICE, FraudCheckService } from '../fraud/fraud-check.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { NOTIFICATION_HOOK, NotificationHook } from '../notifications/notification-hook';
+import { ReferralService } from '../referral/referral.service';
 import { PostbackJobData } from './postback-queue';
 
 /**
@@ -23,6 +24,7 @@ export class PostbackProcessorService {
     private readonly ledger: LedgerService,
     @Inject(FRAUD_CHECK_SERVICE) private readonly fraud: FraudCheckService,
     @Inject(NOTIFICATION_HOOK) private readonly notifications: NotificationHook,
+    private readonly referral: ReferralService,
   ) {}
 
   async process(data: PostbackJobData): Promise<void> {
@@ -71,7 +73,7 @@ export class PostbackProcessorService {
     }
 
     // Idempotency key convention: `${network}:${externalTxnId}` (TRD §3.5).
-    await this.ledger.record({
+    const credit = await this.ledger.record({
       userId: completion.userId,
       amount: completion.coinReward,
       sourceType: LedgerSourceType.offer,
@@ -93,6 +95,14 @@ export class PostbackProcessorService {
       coins: completion.coinReward,
       sourceType: LedgerSourceType.offer,
       sourceRefId: completion.id,
+    });
+
+    // Referral fan-out (D4.3): pay the referrer a snapshot % of this earning.
+    // Idempotent + non-throwing; keyed on the source ledger row.
+    await this.referral.onUserEarned({
+      userId: completion.userId,
+      amount: completion.coinReward,
+      sourceLedgerId: credit.entry.id,
     });
   }
 
@@ -119,7 +129,7 @@ export class PostbackProcessorService {
       return;
     }
 
-    await this.ledger.record({
+    const credit = await this.ledger.record({
       userId: impression.userId,
       amount: impression.coinReward,
       sourceType: LedgerSourceType.ad,
@@ -132,6 +142,12 @@ export class PostbackProcessorService {
       coins: impression.coinReward,
       sourceType: LedgerSourceType.ad,
       sourceRefId: impression.id,
+    });
+
+    await this.referral.onUserEarned({
+      userId: impression.userId,
+      amount: impression.coinReward,
+      sourceLedgerId: credit.entry.id,
     });
   }
 

@@ -16,6 +16,8 @@ import { AccountModule } from './modules/account/account.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AdminAuthModule } from './modules/admin-auth/admin-auth.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { BonusModule } from './modules/bonus/bonus.module';
+import { GameModule } from './modules/game/game.module';
 import { GiftCardsModule } from './modules/gift-cards/gift-cards.module';
 import { HealthModule } from './modules/health/health.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
@@ -23,6 +25,8 @@ import { MetricsModule } from './modules/metrics/metrics.module';
 import { OffersModule } from './modules/offers/offers.module';
 import { PostbacksModule } from './modules/postbacks/postbacks.module';
 import { RedemptionsModule } from './modules/redemptions/redemptions.module';
+import { ReferralModule } from './modules/referral/referral.module';
+import { StreakModule } from './modules/streak/streak.module';
 import { UsersModule } from './modules/users/users.module';
 import { WalletModule } from './modules/wallet/wallet.module';
 import { ProvidersModule } from './providers/providers.module';
@@ -76,6 +80,10 @@ import { ProvidersModule } from './providers/providers.module';
     AdminModule,
     MetricsModule,
     AccountModule,
+    ReferralModule,
+    GameModule,
+    StreakModule,
+    BonusModule,
     JobsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

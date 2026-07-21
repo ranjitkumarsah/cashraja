@@ -26,6 +26,9 @@ enum LedgerSourceType {
   referral
   redemption
   admin_adjustment
+  // Phase D — engagement credits (streak day-bonus, scratch/spin prize)
+  streak
+  bonus
 }
 
 enum OfferNetwork {
@@ -163,7 +166,8 @@ model CoinLedger {
   createdAt      DateTime         @default(now()) @map("created_at")
 
   user                    User              @relation(fields: [userId], references: [id])
-  referralEarningsAsSrc   ReferralEarning[] @relation("SourceLedger")
+  // one-to-one: a single source earning fans out to at most one referral bonus
+  referralEarningAsSrc    ReferralEarning?  @relation("SourceLedger")
   referralEarningsAsBonus ReferralEarning[] @relation("BonusLedger")
 
   @@index([userId, createdAt])
@@ -377,6 +381,8 @@ model GameRound {
   difficulty  String          @map("difficulty")
   status      GameRoundStatus @default(issued) @map("status")
   issuedAt    DateTime        @default(now()) @map("issued_at")
+  // Phase D — server-issued round expiry (issued_at + game.round_expiry_seconds)
+  expiresAt   DateTime?       @map("expires_at")
   completedAt DateTime?       @map("completed_at")
 
   user User @relation(fields: [userId], references: [id])
@@ -464,8 +470,9 @@ model Notification {
 model ReferralEarning {
   id             String   @id @default(uuid()) @db.Uuid
   referralId     String   @map("referral_id") @db.Uuid
-  // the referred user's earning that triggered the bonus
-  sourceLedgerId String   @map("source_ledger_id") @db.Uuid
+  // the referred user's earning that triggered the bonus — UNIQUE so a source
+  // earning can never fan out to more than one referral bonus (double-pay guard)
+  sourceLedgerId String   @unique @map("source_ledger_id") @db.Uuid
   // the referrer's bonus credit
   bonusLedgerId  String   @unique @map("bonus_ledger_id") @db.Uuid
   createdAt      DateTime @default(now()) @map("created_at")
