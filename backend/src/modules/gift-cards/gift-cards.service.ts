@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { GiftCard, GiftCardBrand, Prisma } from '@prisma/client';
+import { GiftCard, GiftCardBrand, InventoryStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AUDIT_ACTIONS, writeAuditLog } from '../../common/audit/admin-audit';
 
@@ -9,6 +9,8 @@ export interface GiftCardView {
   denomination: number;
   coin_cost: number;
   is_active: boolean;
+  /** unused inventory codes available for this brand+denomination (G0.2) */
+  available: number;
   created_at: string;
 }
 
@@ -39,7 +41,8 @@ export class GiftCardsService {
       where: { isActive: true },
       orderBy: [{ coinCost: 'asc' }],
     });
-    return cards.map(toView);
+    const stock = await this.unusedStockByCard();
+    return cards.map((c) => toView(c, stock));
   }
 
   /** Admin catalog: everything, incl. disabled cards. */
@@ -47,7 +50,27 @@ export class GiftCardsService {
     const cards = await this.prisma.giftCard.findMany({
       orderBy: [{ brand: 'asc' }, { denomination: 'asc' }],
     });
-    return cards.map(toView);
+    const stock = await this.unusedStockByCard();
+    return cards.map((c) => toView(c, stock));
+  }
+
+  /**
+   * Unused inventory counts keyed by `brand:denomination` (G0.2). Joins the
+   * encrypted gift_card_inventory so the store can show real per-card stock and
+   * grey out sold-out cards. Only `unused` codes count as available — reserved
+   * and issued codes are already committed to a redemption.
+   */
+  private async unusedStockByCard(): Promise<Map<string, number>> {
+    const grouped = await this.prisma.giftCardInventory.groupBy({
+      by: ['brand', 'denomination'],
+      where: { status: InventoryStatus.unused },
+      _count: { _all: true },
+    });
+    const map = new Map<string, number>();
+    for (const g of grouped) {
+      map.set(`${g.brand}:${g.denomination}`, g._count._all);
+    }
+    return map;
   }
 
   async create(adminId: string, input: CreateGiftCardInput): Promise<GiftCardView> {
@@ -112,13 +135,14 @@ function describeChange(input: UpdateGiftCardInput): string {
   return parts.join(' ');
 }
 
-function toView(card: GiftCard): GiftCardView {
+function toView(card: GiftCard, stock?: Map<string, number>): GiftCardView {
   return {
     id: card.id,
     brand: card.brand,
     denomination: card.denomination,
     coin_cost: card.coinCost,
     is_active: card.isActive,
+    available: stock?.get(`${card.brand}:${card.denomination}`) ?? 0,
     created_at: card.createdAt.toISOString(),
   };
 }

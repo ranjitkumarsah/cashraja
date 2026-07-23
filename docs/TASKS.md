@@ -157,3 +157,24 @@ Each task is independently executable and maps to a build phase (A–F) from IMP
 - [ ] F5 Prod compose profile + deploy runbook + rollback notes (ledger migrations additive-only check)
 - [ ] F6 Play Store checklist doc (Data Safety mapping, copy rules, account-deletion URL)
 - [ ] F7 Docs final pass (README per package, API docs, admin guide) · F8 FINAL_REPORT.md
+
+---
+
+## G — Monetization & Ads (owner feedback, 2026-07-23) + quick wins
+
+Decision: **age gate stays 18+** (India DPDP Act minors = under-18 + parental consent; network terms; Play Families). DOB attestation kept/stored.
+
+### Quick wins
+- [x] G0.1 Spin wheel showed ₹ instead of coins — replaced with coin markers
+- [ ] G0.2 Rewards store: show real per-card stock availability + hide/disable sold-out (backend inventory already tracks; expose count in /gift-cards, wire in app)
+- [ ] G0.3 Live Google Sign-In — debug SHA-1 added to Firebase (owner action)
+
+### Ads integration (real AdMob rewarded + banner; test IDs in dev, real IDs via dart-define)
+- [ ] G1 RewardedAdService real AdMob impl (google_mobile_ads) + banner widget
+- [ ] G2 Streak claim gated behind a rewarded ad (3a)
+- [ ] G3 Banner ad on game screen where it fits (3b)
+- [ ] G4 Game win → claim popup (coins + Claim/Close); Claim→watch ad→credit, Close→forfeit (3c). round-start returns reward preview so popup shows amount before crediting
+- [ ] G5 Banner on scratch/spin win screens (3d)
+- [ ] G6 Real scratch-to-reveal gesture; on reveal → claim popup → watch ad to credit (3e)
+- [ ] G7 Watch-ads: max 10/day + ~1min cooldown between watch and claim (3g); backend cap already exists, add cooldown
+- Note: dev uses client-gated ad-watch before the existing credit call (server still authoritative + daily caps); production hardening = ad-network SSV (already built for offer/ad webhooks).

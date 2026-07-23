@@ -130,7 +130,7 @@ class _StoreTab extends ConsumerWidget {
             itemCount: list.length,
             itemBuilder: (_, int i) => _GiftCardTile(
               card: list[i],
-              onTap: () => _confirm(context, ref, list[i]),
+              onTap: list[i].inStock ? () => _confirm(context, ref, list[i]) : null,
             ),
           );
         },
@@ -143,11 +143,14 @@ class _GiftCardTile extends StatelessWidget {
   const _GiftCardTile({required this.card, required this.onTap});
 
   final GiftCard card;
-  final VoidCallback onTap;
+
+  /// Null ⇒ out of stock: the tile is greyed and non-interactive.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    final bool outOfStock = !card.inStock;
+    final Widget tile = AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -183,6 +186,45 @@ class _GiftCardTile extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            outOfStock ? 'Out of stock' : '${card.available} available',
+            style: TextStyle(
+              color: outOfStock ? RajaColors.rose : RajaColors.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (!outOfStock) return tile;
+    // Greyed + a corner badge for sold-out cards.
+    return Opacity(
+      opacity: 0.55,
+      child: Stack(
+        children: <Widget>[
+          tile,
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: RajaColors.surfaceHigh,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: RajaColors.border),
+              ),
+              child: const Text(
+                'Sold out',
+                style: TextStyle(
+                  color: RajaColors.textMuted,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ),
         ],
       ),

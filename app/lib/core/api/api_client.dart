@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../config/app_config.dart';
 import 'api_exception.dart';
 import 'auth_interceptor.dart';
+import 'models/ad_reward.dart';
 import 'models/auth_tokens.dart';
 import 'models/bonus.dart';
 import 'models/game.dart';
@@ -206,6 +207,18 @@ class ApiClient {
   Future<BonusPlayResult> playBonus(BonusKind kind) async {
     final Map<String, dynamic> body = await _post('/bonus/${kind.wire}/play');
     return BonusPlayResult.fromJson(body);
+  }
+
+  // ---- Watch-ads reward (G7) ---------------------------------------------
+
+  Future<AdRewardState> adRewardState() async {
+    final Map<String, dynamic> body = await _get('/ads/reward-state');
+    return AdRewardState.fromJson(body);
+  }
+
+  Future<AdRewardResult> claimAdReward() async {
+    final Map<String, dynamic> body = await _post('/ads/reward');
+    return AdRewardResult.fromJson(body);
   }
 
   // ---- Low-level helpers -------------------------------------------------

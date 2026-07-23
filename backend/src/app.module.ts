@@ -13,6 +13,7 @@ import { buildRedactPaths, REDACT_CENSOR } from './common/logging/redact';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { JobsModule } from './jobs/jobs.module';
 import { AccountModule } from './modules/account/account.module';
+import { AdsModule } from './modules/ads/ads.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AdminAuthModule } from './modules/admin-auth/admin-auth.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -84,6 +85,7 @@ import { ProvidersModule } from './providers/providers.module';
     GameModule,
     StreakModule,
     BonusModule,
+    AdsModule,
     JobsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

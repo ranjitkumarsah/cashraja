@@ -12,6 +12,8 @@ import '../../../core/widgets/coin_balance.dart';
 import '../../../core/widgets/gradient_background.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/status_chip.dart';
+import '../../ads/banner_ad_widget.dart';
+import '../../ads/claim_reward_flow.dart';
 import 'bonus_controller.dart';
 
 /// D3 "Scratch & Spin". Two daily-bonus games sharing one server contract: the
@@ -74,6 +76,10 @@ class _BonusTabState extends ConsumerState<_BonusTab>
   bool _revealed = false;
   bool _playing = false;
 
+  /// Bumped to hand the scratch card a fresh key so its foil re-covers after a
+  /// forfeit / play-again.
+  int _scratchNonce = 0;
+
   @override
   void initState() {
     super.initState();
@@ -89,7 +95,38 @@ class _BonusTabState extends ConsumerState<_BonusTab>
     super.dispose();
   }
 
-  Future<void> _play() async {
+  /// Ad-gated claim (G6): entered after the scratch foil is cleared (scratch) or
+  /// the Spin button is pressed. The server rolls AND credits the prize inside
+  /// `play()`, so it is called ONLY after a completed ad watch — Close/forfeit
+  /// never calls it, so no prize is rolled or credited.
+  Future<void> _beginClaim() async {
+    final BonusState? s =
+        ref.read(bonusControllerProvider(widget.kind)).valueOrNull;
+    if (s == null || !s.canPlay || _playing || _revealed) return;
+
+    final bool isScratch = widget.kind == BonusKind.scratch;
+    final ClaimOutcome outcome = await showAdGatedClaim(
+      context,
+      ref,
+      title: isScratch ? 'Daily scratch card' : 'Spin the wheel',
+      subtitle: 'Watch a short ad to claim your prize.',
+      icon: isScratch ? Icons.auto_awesome_rounded : Icons.casino_rounded,
+    );
+    if (!mounted) return;
+    switch (outcome) {
+      case ClaimOutcome.claimed:
+        await _playAndReveal();
+      case ClaimOutcome.adIncomplete:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Watch the full ad to claim your prize.')),
+        );
+        _resetScratch();
+      case ClaimOutcome.closed:
+        _resetScratch();
+    }
+  }
+
+  Future<void> _playAndReveal() async {
     setState(() => _playing = true);
     try {
       final BonusPlayResult result =
@@ -111,16 +148,26 @@ class _BonusTabState extends ConsumerState<_BonusTab>
       // Attempt-limit or other errors — refresh state so the UI reflects it.
       await ref.read(bonusControllerProvider(widget.kind).notifier).refresh();
       if (!mounted) return;
+      _resetScratch();
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 
+  /// "Play again" after a revealed prize.
   void _reset() {
     setState(() {
       _result = null;
       _revealed = false;
+      _scratchNonce += 1;
     });
+  }
+
+  /// Re-cover the scratch foil without consuming an attempt (forfeit / ad not
+  /// finished).
+  void _resetScratch() {
+    if (!mounted) return;
+    setState(() => _scratchNonce += 1);
   }
 
   @override
@@ -166,7 +213,13 @@ class _BonusTabState extends ConsumerState<_BonusTab>
             const SizedBox(height: 28),
             Center(
               child: widget.kind == BonusKind.scratch
-                  ? _ScratchCard(revealed: _revealed, result: _result)
+                  ? _ScratchCard(
+                      key: ValueKey<int>(_scratchNonce),
+                      revealed: _revealed,
+                      result: _result,
+                      canScratch: s.canPlay && !_playing,
+                      onThresholdReached: _beginClaim,
+                    )
                   : _SpinWheel(
                       animation: _spin,
                       from: _spinFrom,
@@ -175,8 +228,23 @@ class _BonusTabState extends ConsumerState<_BonusTab>
                       result: _result,
                     ),
             ),
+            if (widget.kind == BonusKind.scratch && !_revealed) ...<Widget>[
+              const SizedBox(height: 12),
+              Text(
+                s.canPlay
+                    ? 'Scratch the card to reveal your prize.'
+                    : 'No scratch cards left today.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: RajaColors.textMuted, fontSize: 13),
+              ),
+            ],
             const SizedBox(height: 32),
             _actionButton(s),
+            // G5 (3d): banner under the win/reveal area.
+            if (_revealed) ...<Widget>[
+              const SizedBox(height: 20),
+              const Center(child: BannerAdWidget()),
+            ],
           ],
         ),
       ),
@@ -194,11 +262,15 @@ class _BonusTabState extends ConsumerState<_BonusTab>
         onPressed: more ? _reset : null,
       );
     }
+    // Scratch is driven by the gesture on the card; spin uses this button.
+    if (widget.kind == BonusKind.scratch) {
+      return const SizedBox.shrink();
+    }
     final bool canPlay = s.canPlay && !_playing;
     return PrimaryButton(
-      label: widget.kind == BonusKind.scratch ? 'Scratch to reveal' : 'Spin now',
+      label: 'Spin now',
       loading: _playing,
-      onPressed: canPlay ? _play : null,
+      onPressed: canPlay ? _beginClaim : null,
     );
   }
 }
@@ -244,20 +316,67 @@ class _PrizeReveal extends StatelessWidget {
   }
 }
 
-class _ScratchCard extends StatelessWidget {
-  const _ScratchCard({required this.revealed, required this.result});
+/// Real scratch-to-reveal card (G6). The gold foil is drawn over the prize area
+/// and the user drags a finger to erase it (a `CustomPainter` clearing circles
+/// along the drag path). Once ~45% is scratched, [onThresholdReached] fires — at
+/// which point the ad-gated claim decides whether the server rolls the prize.
+class _ScratchCard extends StatefulWidget {
+  const _ScratchCard({
+    super.key,
+    required this.revealed,
+    required this.result,
+    required this.canScratch,
+    required this.onThresholdReached,
+  });
 
   final bool revealed;
   final BonusPlayResult? result;
+  final bool canScratch;
+  final VoidCallback onThresholdReached;
+
+  @override
+  State<_ScratchCard> createState() => _ScratchCardState();
+}
+
+class _ScratchCardState extends State<_ScratchCard> {
+  static const double _width = 240;
+  static const double _height = 160;
+  // Coarse occupancy grid used to estimate the scratched fraction.
+  static const int _cols = 12;
+  static const int _rows = 8;
+  static const double _revealFraction = 0.45;
+
+  final List<Offset> _points = <Offset>[];
+  final Set<int> _cells = <int>{};
+  bool _fired = false;
+
+  void _addPoint(Offset local) {
+    if (!widget.canScratch || widget.revealed || _fired) return;
+    if (local.dx < 0 || local.dy < 0 || local.dx > _width || local.dy > _height) {
+      return;
+    }
+    final int col = (local.dx / (_width / _cols)).floor().clamp(0, _cols - 1);
+    final int row = (local.dy / (_height / _rows)).floor().clamp(0, _rows - 1);
+    setState(() {
+      _points.add(local);
+      _cells.add(row * _cols + col);
+    });
+    if (_cells.length / (_cols * _rows) >= _revealFraction) {
+      _fired = true;
+      widget.onThresholdReached();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final BonusPlayResult? result = widget.result;
     return SizedBox(
-      width: 240,
-      height: 160,
+      width: _width,
+      height: _height,
       child: Stack(
         alignment: Alignment.center,
         children: <Widget>[
+          // Prize layer (mystery until the server rolls it post-ad).
           DecoratedBox(
             decoration: BoxDecoration(
               color: RajaColors.surface,
@@ -265,42 +384,70 @@ class _ScratchCard extends StatelessWidget {
               border: Border.all(color: RajaColors.border),
             ),
             child: Center(
-              child: revealed && result != null
-                  ? _PrizeReveal(result: result!)
-                  : const SizedBox.shrink(),
+              child: widget.revealed && result != null
+                  ? _PrizeReveal(result: result)
+                  : const Icon(Icons.card_giftcard_rounded,
+                      color: RajaColors.textMuted, size: 40),
             ),
           ),
-          AnimatedOpacity(
-            opacity: revealed ? 0 : 1,
-            duration: const Duration(milliseconds: 600),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RajaColors.goldGradient,
+          // Scratchable gold foil.
+          if (!widget.revealed)
+            GestureDetector(
+              onPanStart: (DragStartDetails d) => _addPoint(d.localPosition),
+              onPanUpdate: (DragUpdateDetails d) => _addPoint(d.localPosition),
+              child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-              ),
-              alignment: Alignment.center,
-              child: const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Icon(Icons.auto_awesome_rounded,
-                      color: Color(0xFF1A1300), size: 30),
-                  SizedBox(height: 8),
-                  Text(
-                    'Daily prize',
-                    style: TextStyle(
-                      color: Color(0xFF1A1300),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                    ),
-                  ),
-                ],
+                child: CustomPaint(
+                  size: const Size(_width, _height),
+                  painter: _FoilPainter(points: _points),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
+}
+
+class _FoilPainter extends CustomPainter {
+  _FoilPainter({required this.points});
+
+  final List<Offset> points;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Rect rect = Offset.zero & size;
+    canvas.saveLayer(rect, Paint());
+    // Gold foil.
+    final Paint foil = Paint()
+      ..shader = RajaColors.goldGradient.createShader(rect);
+    canvas.drawRect(rect, foil);
+    // "Scratch here" hint.
+    final TextPainter tp = TextPainter(
+      textDirection: TextDirection.ltr,
+      text: const TextSpan(
+        text: 'Scratch here',
+        style: TextStyle(
+          color: Color(0xFF1A1300),
+          fontWeight: FontWeight.w800,
+          fontSize: 15,
+        ),
+      ),
+    )..layout();
+    tp.paint(canvas, Offset((size.width - tp.width) / 2, (size.height - tp.height) / 2));
+    // Erase along the drag path.
+    final Paint eraser = Paint()
+      ..blendMode = BlendMode.clear
+      ..style = PaintingStyle.fill;
+    for (final Offset p in points) {
+      canvas.drawCircle(p, 18, eraser);
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _FoilPainter oldDelegate) =>
+      oldDelegate.points.length != points.length;
 }
 
 class _SpinWheel extends StatelessWidget {

@@ -1,6 +1,7 @@
 import 'package:cashraja/core/api/api_exception.dart';
 import 'package:cashraja/core/api/models/game.dart';
 import 'package:cashraja/core/providers.dart';
+import 'package:cashraja/features/ads/rewarded_ad_service.dart';
 import 'package:cashraja/features/game/presentation/game_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,12 +43,14 @@ Future<void> _clearRound(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('Game round: start → play → server coins revealed',
+  testWidgets('Game win popup: claim watches an ad then credits server coins (G4)',
       (tester) async {
     await pumpApp(
       tester,
       const GameScreen(),
       overrides: <Override>[
+        rewardedAdServiceProvider
+            .overrideWithValue(FakeRewardedAdService(AdResult.watched)),
         apiClientProvider.overrideWithValue(
           FakeApiClient(
             onStartRound: (GameDifficulty d) => GameRound(
@@ -55,6 +58,7 @@ void main() {
               difficulty: d,
               expiresAt: DateTime.now().add(const Duration(seconds: 120)),
               dailyCapRemaining: 19,
+              rewardPreview: 5,
             ),
             onCompleteRound: (String roundId) => const RoundResult(
               coinsEarned: 5,
@@ -76,14 +80,64 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Locking in your round…'), findsOneWidget);
 
-    // Fire the min-play-time timer → round-complete → result.
+    // Fire the min-play-time timer → the win claim popup (reward preview shown).
     await tester.pump(const Duration(seconds: 12));
+    await tester.pumpAndSettle();
+    expect(find.text('Watch ad & claim'), findsOneWidget);
+
+    // Claim → rewarded ad (watched) → round-complete → result.
+    await tester.tap(find.text('Watch ad & claim'));
+    await tester.pump(); // dialog closes
+    await tester.pump(); // ad watched → round-complete in flight
     await tester.pump(); // resolve round-complete
     await tester.pumpAndSettle();
 
-    expect(find.text('Round cleared!'), findsOneWidget);
-    expect(find.text('5'), findsOneWidget); // server-authoritative coins
     expect(find.textContaining('18 rounds left'), findsOneWidget);
+  });
+
+  testWidgets('Game win popup: Close forfeits the round without crediting (G4)',
+      (tester) async {
+    bool completed = false;
+    await pumpApp(
+      tester,
+      const GameScreen(),
+      overrides: <Override>[
+        rewardedAdServiceProvider
+            .overrideWithValue(FakeRewardedAdService(AdResult.watched)),
+        apiClientProvider.overrideWithValue(
+          FakeApiClient(
+            onStartRound: (GameDifficulty d) => GameRound(
+              roundId: 'r-1',
+              difficulty: d,
+              expiresAt: DateTime.now().add(const Duration(seconds: 120)),
+              dailyCapRemaining: 19,
+              rewardPreview: 5,
+            ),
+            onCompleteRound: (String roundId) {
+              completed = true;
+              return const RoundResult(
+                coinsEarned: 5,
+                newBalance: 105,
+                dailyCapRemaining: 18,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await _startEasy(tester);
+    await _clearRound(tester);
+    await tester.pump(const Duration(seconds: 12));
+    await tester.pumpAndSettle();
+
+    // Close forfeits — round-complete is never called, back to the picker.
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    expect(completed, isFalse);
+    expect(find.text('Pick your challenge'), findsOneWidget);
   });
 
   testWidgets('Game shows the daily-cap state when the server rejects start',

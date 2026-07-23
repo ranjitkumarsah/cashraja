@@ -14,5 +14,8 @@ Future<void> main() async {
   // Initialize Firebase; non-fatal in dev so the mock auth path still runs.
   await initFirebase();
 
+  // Initialize AdMob (no-op under mock ads); non-fatal so the app always boots.
+  await initMobileAds();
+
   runApp(const ProviderScope(child: CashRajaApp()));
 }

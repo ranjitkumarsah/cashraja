@@ -38,6 +38,13 @@ export interface RoundStartResult {
   difficulty: GameDifficulty;
   expires_at: string;
   daily_cap_remaining: number;
+  /**
+   * Coins this round pays out on completion, for the difficulty (G4). Lets the
+   * app show the reward in the win popup BEFORE it calls round-complete to
+   * credit. This is a preview only — the authoritative credit still comes from
+   * round-complete, which re-reads the same config server-side.
+   */
+  reward_preview: number;
 }
 
 export interface RoundCompleteResult {
@@ -94,11 +101,18 @@ export class GameService {
       },
     });
 
+    const rewardPreview = await this.appConfig.getNumber(
+      CFG.coinsPerRound,
+      difficulty,
+      DEFAULTS.coinsPerRound[difficulty],
+    );
+
     return {
       round_id: round.id,
       difficulty,
       expires_at: expiresAt.toISOString(),
       daily_cap_remaining: Math.max(0, cap - (usedToday + 1)),
+      reward_preview: rewardPreview,
     };
   }
 

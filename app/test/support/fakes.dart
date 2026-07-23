@@ -1,4 +1,5 @@
 import 'package:cashraja/core/api/api_client.dart';
+import 'package:cashraja/core/api/models/ad_reward.dart';
 import 'package:cashraja/core/api/models/auth_tokens.dart';
 import 'package:cashraja/core/api/models/bonus.dart';
 import 'package:cashraja/core/api/models/game.dart';
@@ -11,6 +12,7 @@ import 'package:cashraja/core/api/models/user.dart';
 import 'package:cashraja/core/api/models/wallet.dart';
 import 'package:cashraja/core/api/token_store.dart';
 import 'package:cashraja/core/device/device_id.dart';
+import 'package:cashraja/features/ads/rewarded_ad_service.dart';
 import 'package:dio/dio.dart';
 
 /// A hand-built [ApiClient] returning canned data. Methods can be overridden
@@ -33,6 +35,8 @@ class FakeApiClient extends ApiClient {
     this.onCompleteRound,
     this.bonusStateData,
     this.onPlayBonus,
+    this.adRewardStateData,
+    this.onClaimAdReward,
   }) : super(
           store: InMemoryTokenStore(),
           onSessionExpired: _noop,
@@ -57,6 +61,8 @@ class FakeApiClient extends ApiClient {
   final RoundResult Function(String roundId)? onCompleteRound;
   final BonusState Function(BonusKind kind)? bonusStateData;
   final BonusPlayResult Function(BonusKind kind)? onPlayBonus;
+  final AdRewardState? adRewardStateData;
+  final AdRewardResult Function()? onClaimAdReward;
 
   @override
   Future<WalletSummary> wallet() async =>
@@ -207,6 +213,43 @@ class FakeApiClient extends ApiClient {
       attemptsRemaining: 0,
     );
   }
+
+  @override
+  Future<AdRewardState> adRewardState() async =>
+      adRewardStateData ??
+      const AdRewardState(
+        dailyCap: 10,
+        rewardsRemainingToday: 10,
+        cooldownSeconds: 60,
+        cooldownRemainingSeconds: 0,
+        coinsPerView: 5,
+      );
+
+  @override
+  Future<AdRewardResult> claimAdReward() async {
+    if (onClaimAdReward != null) return onClaimAdReward!();
+    return const AdRewardResult(
+      coinsEarned: 5,
+      newBalance: 105,
+      rewardsRemainingToday: 9,
+      cooldownSeconds: 60,
+    );
+  }
+}
+
+/// A [RewardedAdService] that resolves immediately with a fixed [AdResult] —
+/// lets widget tests exercise the watched vs not-watched ad-gated flows without
+/// the mock driver's simulated delay.
+class FakeRewardedAdService implements RewardedAdService {
+  FakeRewardedAdService(this.result);
+
+  final AdResult result;
+
+  @override
+  Future<void> load() async {}
+
+  @override
+  Future<AdResult> show() async => result;
 }
 
 /// Device id that never touches secure storage.

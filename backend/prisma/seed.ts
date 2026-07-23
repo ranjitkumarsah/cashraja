@@ -46,9 +46,12 @@ const CONFIG_DEFAULTS: Array<{ key: string; value: object }> = [
   { key: 'inventory.low_stock_threshold', value: { threshold: 5 } },
   // Phase B — postback pipeline + ad SSV rewards
   { key: 'offers.pending_expiry_days', value: { days: 30 } },
-  { key: 'ads.daily_reward_cap', value: { views: 20 } },
+  // G7 — rewarded views credited per user per UTC day (client-gated + SSV share this cap)
+  { key: 'ads.daily_reward_cap', value: { views: 10 } },
   { key: 'ads.coins_per_rewarded_view', value: { coins: 5 } },
   { key: 'ads.max_reward_per_view', value: { coins: 100 } },
+  // G7 — cooldown between two consecutive client-gated rewarded-ad claims
+  { key: 'ads.reward_cooldown_seconds', value: { seconds: 60 } },
 ];
 
 // Dev/E2E offers on the mock network (B3.3): launched via the mock adapter,

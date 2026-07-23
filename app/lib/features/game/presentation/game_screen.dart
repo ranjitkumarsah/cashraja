@@ -14,10 +14,22 @@ import '../../../core/widgets/coin_balance.dart';
 import '../../../core/widgets/coin_glyph.dart';
 import '../../../core/widgets/gradient_background.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../../ads/banner_ad_widget.dart';
+import '../../ads/claim_reward_flow.dart';
 import '../../wallet/presentation/wallet_controllers.dart';
 
 /// Lifecycle of a single play session.
-enum _Phase { picking, starting, playing, verifying, completing, result, capReached, error }
+enum _Phase {
+  picking,
+  starting,
+  playing,
+  verifying,
+  readyToClaim,
+  completing,
+  result,
+  capReached,
+  error,
+}
 
 /// The D1 "Play & Win" mini-game. A round is server-issued (`round-start`),
 /// the number-recognition game is pure client-side UX, and the coin reward is
@@ -106,7 +118,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final Duration elapsed = DateTime.now().difference(_startedAt);
     final Duration min = _difficulty.minPlayTime;
     if (elapsed >= min) {
-      _complete();
+      _onCleared();
       return;
     }
     // Hold the round open until the minimum play time so a genuine round is
@@ -114,8 +126,41 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     setState(() => _phase = _Phase.verifying);
     _verifyTimer?.cancel();
     _verifyTimer = Timer(min - elapsed, () {
-      if (mounted) _complete();
+      if (mounted) _onCleared();
     });
+  }
+
+  /// Local play is done and the round is genuine (min play time met). Show the
+  /// win claim popup (G4): the coins come from the server `reward_preview`, and
+  /// only a completed ad watch calls round-complete to actually credit.
+  void _onCleared() {
+    setState(() => _phase = _Phase.readyToClaim);
+    _promptClaim();
+  }
+
+  Future<void> _promptClaim() async {
+    final GameRound? round = _round;
+    if (round == null || !mounted) return;
+    final ClaimOutcome outcome = await showAdGatedClaim(
+      context,
+      ref,
+      coins: round.rewardPreview,
+      title: 'Round cleared!',
+      subtitle: 'Watch a short ad to claim your coins.',
+    );
+    if (!mounted) return;
+    switch (outcome) {
+      case ClaimOutcome.claimed:
+        await _complete();
+      case ClaimOutcome.adIncomplete:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Watch the full ad to claim your coins.')),
+        );
+      // Stay on the readyToClaim view so they can try again or forfeit.
+      case ClaimOutcome.closed:
+        // Forfeited — round-complete is never called, so no reward is credited.
+        _reset();
+    }
   }
 
   Future<void> _complete() async {
@@ -171,12 +216,23 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       extendBodyBehindAppBar: true,
       body: GradientBackground(
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 260),
-              child: _buildBody(),
-            ),
+          child: Column(
+            children: <Widget>[
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 260),
+                    child: _buildBody(),
+                  ),
+                ),
+              ),
+              // G3 (3b): banner anchored at the bottom, clear of the game grid.
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: BannerAdWidget(),
+              ),
+            ],
           ),
         ),
       ),
@@ -205,6 +261,13 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         );
       case _Phase.verifying:
         return const _VerifyingView(key: ValueKey<String>('verify'));
+      case _Phase.readyToClaim:
+        return _ReadyToClaimView(
+          key: const ValueKey<String>('claim'),
+          coins: _round?.rewardPreview ?? 0,
+          onClaim: _promptClaim,
+          onForfeit: _reset,
+        );
       case _Phase.result:
         return _ResultView(
           key: const ValueKey<String>('result'),
@@ -498,6 +561,55 @@ class _VerifyingView extends StatelessWidget {
             'Verifying a fair round before crediting coins.',
             textAlign: TextAlign.center,
             style: TextStyle(color: RajaColors.textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown after a genuine round clears, alongside the claim popup (G4). If the
+/// popup's ad is not completed, the user lands here to retry or forfeit.
+class _ReadyToClaimView extends StatelessWidget {
+  const _ReadyToClaimView({
+    super.key,
+    required this.coins,
+    required this.onClaim,
+    required this.onForfeit,
+  });
+
+  final int coins;
+  final VoidCallback onClaim;
+  final VoidCallback onForfeit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const Icon(Icons.emoji_events_rounded, size: 56, color: RajaColors.gold),
+          const SizedBox(height: 18),
+          Text('Round cleared!', style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          const Text('Claim your reward',
+              style: TextStyle(color: RajaColors.textSecondary)),
+          const SizedBox(height: 10),
+          CoinBalance(amount: coins, fontSize: 40, glyphSize: 32),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: 260,
+            child: PrimaryButton(
+              label: 'Claim reward',
+              icon: Icons.smart_display_rounded,
+              onPressed: onClaim,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: onForfeit,
+            child: const Text('Forfeit',
+                style: TextStyle(color: RajaColors.textMuted)),
           ),
         ],
       ),

@@ -1,5 +1,7 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../../core/config/app_config.dart';
 
@@ -48,28 +50,76 @@ class MockRewardedAdService implements RewardedAdService {
   }
 }
 
-/// Real driver placeholder.
+/// Real AdMob rewarded driver (G1) via `google_mobile_ads`.
 ///
-/// TODO(ads): wire a real rewarded-ad SDK here.
-/// NEEDS_CREDENTIALS — AppLovin MAX SDK key / ad unit id (or google_mobile_ads
-/// app id + rewarded unit). Add the plugin (`applovin_max` or
-/// `google_mobile_ads`), initialize in main(), and implement load()/show()
-/// mapping the SDK reward/dismiss/error callbacks onto [AdResult]. Crediting
-/// stays server-side via SSV — this client only reports that the ad completed.
+/// [show] loads (if needed) and presents a rewarded ad, resolving with
+/// [AdResult.watched] ONLY when the SDK fires `onUserEarnedReward`; a dismissal
+/// without earning resolves [AdResult.dismissed]; a load/show failure resolves
+/// [AdResult.noFill]/[AdResult.failed]. The `watched` result merely gates
+/// whether the app calls the server credit endpoint — coins always come from
+/// the server, never from this client.
 class RealRewardedAdService implements RewardedAdService {
+  RealRewardedAdService({String? adUnitId})
+      : _adUnitId = adUnitId ?? AppConfig.admobRewardedId;
+
+  final String _adUnitId;
+  RewardedAd? _ad;
+
   @override
-  Future<void> load() async {
-    throw UnimplementedError('Real ad SDK not wired (NEEDS_CREDENTIALS).');
+  Future<void> load() {
+    if (_ad != null) return Future<void>.value();
+    final Completer<void> done = Completer<void>();
+    RewardedAd.load(
+      adUnitId: _adUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (RewardedAd ad) {
+          _ad = ad;
+          if (!done.isCompleted) done.complete();
+        },
+        onAdFailedToLoad: (LoadAdError error) {
+          _ad = null;
+          if (!done.isCompleted) done.complete();
+        },
+      ),
+    );
+    return done.future;
   }
 
   @override
   Future<AdResult> show() async {
-    throw UnimplementedError('Real ad SDK not wired (NEEDS_CREDENTIALS).');
+    await load();
+    final RewardedAd? ad = _ad;
+    if (ad == null) return AdResult.noFill;
+    _ad = null; // a rewarded ad is single-use; a fresh one is loaded next time.
+
+    final Completer<AdResult> result = Completer<AdResult>();
+    bool earned = false;
+
+    ad.fullScreenContentCallback = FullScreenContentCallback<RewardedAd>(
+      onAdDismissedFullScreenContent: (RewardedAd ad) {
+        ad.dispose();
+        if (!result.isCompleted) {
+          result.complete(earned ? AdResult.watched : AdResult.dismissed);
+        }
+      },
+      onAdFailedToShowFullScreenContent: (RewardedAd ad, AdError error) {
+        ad.dispose();
+        if (!result.isCompleted) result.complete(AdResult.failed);
+      },
+    );
+
+    unawaited(ad.show(
+      onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
+        earned = true;
+      },
+    ));
+    return result.future;
   }
 }
 
 final rewardedAdServiceProvider = Provider<RewardedAdService>((Ref ref) {
-  if (AppConfig.useMockAds || kDebugMode) {
+  if (AppConfig.useMockAds) {
     return MockRewardedAdService();
   }
   return RealRewardedAdService();

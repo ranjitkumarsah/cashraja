@@ -76,12 +76,17 @@ class GameRound {
     required this.difficulty,
     required this.expiresAt,
     required this.dailyCapRemaining,
+    this.rewardPreview = 0,
   });
 
   final String roundId;
   final GameDifficulty difficulty;
   final DateTime expiresAt;
   final int dailyCapRemaining;
+
+  /// Coins this round pays on completion (G4). Shown in the win claim popup
+  /// BEFORE crediting; the authoritative amount still comes from round-complete.
+  final int rewardPreview;
 
   factory GameRound.fromJson(Map<String, dynamic> json) {
     return GameRound(
@@ -90,6 +95,7 @@ class GameRound {
       expiresAt: DateTime.tryParse(json['expires_at'] as String? ?? '') ??
           DateTime.now().add(const Duration(seconds: 120)),
       dailyCapRemaining: (json['daily_cap_remaining'] as num?)?.toInt() ?? 0,
+      rewardPreview: (json['reward_preview'] as num?)?.toInt() ?? 0,
     );
   }
 }

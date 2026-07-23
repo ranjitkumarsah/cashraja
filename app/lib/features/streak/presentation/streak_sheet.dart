@@ -8,6 +8,7 @@ import '../../../core/theme/raja_theme.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/coin_glyph.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../../ads/rewarded_ad_service.dart';
 import 'streak_controller.dart';
 
 /// Opens the daily-streak claim sheet.
@@ -39,6 +40,19 @@ class _StreakSheetState extends ConsumerState<StreakSheet> {
     setState(() => _claiming = true);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final NavigatorState navigator = Navigator.of(context);
+
+    // G2 (3a): the daily bonus is gated behind a rewarded ad. Only a completed
+    // watch calls the authoritative /streak/claim credit endpoint.
+    final AdResult ad = await ref.read(rewardedAdServiceProvider).show();
+    if (!mounted) return;
+    if (ad != AdResult.watched) {
+      setState(() => _claiming = false);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Watch the ad to claim your streak bonus.')),
+      );
+      return;
+    }
+
     try {
       final StreakClaimResult result =
           await ref.read(streakControllerProvider.notifier).claim();

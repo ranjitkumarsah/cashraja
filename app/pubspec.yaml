@@ -31,6 +31,9 @@ dependencies:
   firebase_auth: ^5.3.3
   google_sign_in: ^6.2.2
 
+  # Ads (AdMob rewarded + banner) — G1
+  google_mobile_ads: ^5.2.0
+
   # i18n
   intl: any
 

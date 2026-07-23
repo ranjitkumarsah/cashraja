@@ -117,8 +117,14 @@ describe('GameService', () => {
     expect(result.difficulty).toBe(GameDifficulty.medium);
     expect(new Date(result.expires_at).getTime()).toBeGreaterThan(Date.now());
     expect(result.daily_cap_remaining).toBe(2); // cap 3, one issued
+    expect(result.reward_preview).toBe(10); // medium coins-per-round (G4)
     expect(prisma.rounds).toHaveLength(1);
     expect(prisma.rounds[0].status).toBe(GameRoundStatus.issued);
+  });
+
+  it('round-start previews the difficulty reward for the win popup (G4)', async () => {
+    expect((await service.roundStart(userId, GameDifficulty.easy)).reward_preview).toBe(5);
+    expect((await service.roundStart(userId, GameDifficulty.hard)).reward_preview).toBe(20);
   });
 
   it('enforces the daily round cap at start (429)', async () => {
