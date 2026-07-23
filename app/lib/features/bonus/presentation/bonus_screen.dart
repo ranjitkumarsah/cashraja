@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/api/models/bonus.dart';
 import '../../../core/theme/raja_colors.dart';
-import '../../../core/theme/raja_theme.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/coin_balance.dart';
 import '../../../core/widgets/gradient_background.dart';
@@ -399,24 +398,35 @@ class _WheelPainter extends CustomPainter {
         ..strokeWidth = 4
         ..color = RajaColors.gold,
     );
-    // Coin glyph markers per segment.
-    final TextPainter tp = TextPainter(textDirection: TextDirection.ltr);
+    // Coin markers per segment — a small gold coin disc (the app economy is
+    // coins, not rupees), matching the CoinGlyph used elsewhere.
     for (int i = 0; i < _segments.length; i++) {
       final double a = i * sweep + sweep / 2;
       final Offset p = Offset(
         center.dx + cos(a) * radius * 0.62,
         center.dy + sin(a) * radius * 0.62,
       );
-      tp.text = const TextSpan(
-        text: '₹',
-        style: TextStyle(
-          color: RajaColors.gold,
-          fontWeight: FontWeight.w900,
-          fontSize: 20,
-          fontFeatures: RajaTheme.tabularFigures,
-        ),
+      const double coinR = 11;
+      canvas.drawCircle(p, coinR, Paint()..color = RajaColors.gold);
+      canvas.drawCircle(
+        p,
+        coinR,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..color = RajaColors.goldDeep,
       );
-      tp.layout();
+      final TextPainter tp = TextPainter(
+        textDirection: TextDirection.ltr,
+        text: const TextSpan(
+          text: '\$',
+          style: TextStyle(
+            color: RajaColors.indigoDeep,
+            fontWeight: FontWeight.w900,
+            fontSize: 13,
+          ),
+        ),
+      )..layout();
       tp.paint(canvas, p - Offset(tp.width / 2, tp.height / 2));
     }
   }
