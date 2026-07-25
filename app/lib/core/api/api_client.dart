@@ -56,16 +56,17 @@ class ApiClient {
 
   // ---- Auth (no bearer token) -------------------------------------------
 
+  /// Step 1: exchange the Google/Firebase ID token for an app session. No
+  /// referral here — attestation (with the optional referral) is a separate,
+  /// session-authenticated step. The response's `user.needs_attestation` tells
+  /// the app whether the 18+ DOB attestation is still required.
   Future<LoginResult> googleLogin({
     required String idToken,
     required String deviceFingerprint,
-    String? referralCode,
   }) async {
     final Map<String, dynamic> data = <String, dynamic>{
       'id_token': idToken,
       'device_fingerprint': deviceFingerprint,
-      if (referralCode != null && referralCode.isNotEmpty)
-        'referral_code': referralCode,
     };
     final Map<String, dynamic> body = await _post(
       '/auth/google',
@@ -73,6 +74,29 @@ class ApiClient {
       skipAuth: true,
     );
     return LoginResult.fromJson(body);
+  }
+
+  /// Step 2 (session-authenticated): server-authoritative 18+ attestation.
+  /// Persists the DOB and applies the optional referral for a new user; the
+  /// server enforces 18+ regardless of the client-side check.
+  Future<AuthUser> attest({
+    required DateTime dateOfBirth,
+    String? referralCode,
+  }) async {
+    final String isoDate =
+        dateOfBirth.toIso8601String().split('T').first; // YYYY-MM-DD
+    final Map<String, dynamic> body = await _post(
+      '/auth/attest',
+      data: <String, dynamic>{
+        'date_of_birth': isoDate,
+        if (referralCode != null && referralCode.isNotEmpty)
+          'referral_code': referralCode,
+      },
+    );
+    final Object? user = body['user'];
+    return AuthUser.fromJson(
+      user is Map<String, dynamic> ? user : body,
+    );
   }
 
   Future<AuthTokens> refresh(String refreshToken) async {

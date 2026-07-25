@@ -149,6 +149,10 @@ model User {
   // Maintained write-through inside LedgerService transactions; nightly reconciliation alerts on drift.
   coinBalanceCached Int        @default(0) @map("coin_balance_cached")
   referralCode      String     @unique @map("referral_code")
+  // 18+ attestation (server-authoritative). Both null until the user completes
+  // the DOB attestation step; presence of date_of_birth ⇒ already attested.
+  dateOfBirth       DateTime?  @map("date_of_birth") @db.Date
+  attestedAt        DateTime?  @map("attested_at")
   createdAt         DateTime   @default(now()) @map("created_at")
   lastSeenAt        DateTime   @default(now()) @map("last_seen_at")
 

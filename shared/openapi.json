@@ -53,6 +53,30 @@
         ]
       }
     },
+    "/api/auth/attest": {
+      "post": {
+        "operationId": "AuthController_attest",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/auth/refresh": {
       "post": {
         "operationId": "AuthController_refresh",
@@ -1643,6 +1667,10 @@
     },
     "schemas": {
       "GoogleAuthDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AttestDto": {
         "type": "object",
         "properties": {}
       },

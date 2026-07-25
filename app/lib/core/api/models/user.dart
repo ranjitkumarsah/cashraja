@@ -1,4 +1,5 @@
-/// Reduced user object returned by `POST /api/auth/google`.
+/// Reduced user object returned by `POST /api/auth/google` and
+/// `POST /api/auth/attest`.
 class AuthUser {
   const AuthUser({
     required this.id,
@@ -6,6 +7,7 @@ class AuthUser {
     required this.email,
     required this.coinBalance,
     required this.referralCode,
+    this.needsAttestation = false,
   });
 
   final String id;
@@ -14,6 +16,9 @@ class AuthUser {
   final int coinBalance;
   final String referralCode;
 
+  /// True until the user completes the server-side 18+ DOB attestation.
+  final bool needsAttestation;
+
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     return AuthUser(
       id: json['id'] as String,
@@ -21,6 +26,7 @@ class AuthUser {
       email: (json['email'] as String?) ?? '',
       coinBalance: (json['coin_balance_cached'] as num?)?.toInt() ?? 0,
       referralCode: (json['referral_code'] as String?) ?? '',
+      needsAttestation: (json['needs_attestation'] as bool?) ?? false,
     );
   }
 
@@ -32,6 +38,7 @@ class AuthUser {
         email: p.email,
         coinBalance: 0,
         referralCode: p.referralCode,
+        needsAttestation: p.needsAttestation,
       );
 }
 
@@ -44,6 +51,7 @@ class MeProfile {
     required this.status,
     required this.referralCode,
     required this.createdAt,
+    this.needsAttestation = false,
     this.country,
     this.streakDays,
   });
@@ -54,6 +62,9 @@ class MeProfile {
   final String status;
   final String referralCode;
   final DateTime createdAt;
+
+  /// True until the user completes the server-side 18+ DOB attestation.
+  final bool needsAttestation;
   final String? country;
 
   /// Backend currently returns `streak: null` (Phase D). Nullable until wired.
@@ -69,6 +80,7 @@ class MeProfile {
       referralCode: (json['referral_code'] as String?) ?? '',
       createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
           DateTime.now(),
+      needsAttestation: (json['needs_attestation'] as bool?) ?? false,
       country: json['country'] as String?,
       streakDays: streak is Map<String, dynamic>
           ? (streak['current'] as num?)?.toInt()

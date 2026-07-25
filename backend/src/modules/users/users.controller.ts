@@ -17,6 +17,8 @@ export interface MeView {
   status: string;
   referral_code: string;
   created_at: string;
+  /** True until the user completes the server-side 18+ DOB attestation. */
+  needs_attestation: boolean;
   /** Streak state lands in Phase D (D2) — placeholder until then. */
   streak: null;
 }
@@ -41,6 +43,7 @@ export class UsersController {
       status: row.status,
       referral_code: row.referralCode,
       created_at: row.createdAt.toISOString(),
+      needs_attestation: row.dateOfBirth === null,
       streak: null,
     };
   }

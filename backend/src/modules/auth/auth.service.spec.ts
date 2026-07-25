@@ -110,6 +110,83 @@ describe('AuthService', () => {
     });
   });
 
+  describe('attestation (server-authoritative 18+)', () => {
+    const dob = (y: number, m = 1, d = 1) => new Date(Date.UTC(y, m - 1, d));
+
+    it('new-user google-login reports needs_attestation=true', async () => {
+      const result = await login('mock:uid-1:alice@example.com');
+      expect(result.user.needs_attestation).toBe(true);
+    });
+
+    it('attest saves DOB + attested_at and returns needs_attestation=false', async () => {
+      const loginResult = await login('mock:uid-1:alice@example.com');
+      const before = Date.now();
+      const attested = await service.attest({
+        userId: loginResult.user.id,
+        dateOfBirth: dob(1998),
+      });
+
+      expect(attested.user.needs_attestation).toBe(false);
+      const stored = fake.usersStore[0];
+      expect(stored.dateOfBirth).toEqual(dob(1998));
+      expect(stored.attestedAt).not.toBeNull();
+      expect(stored.attestedAt!.getTime()).toBeGreaterThanOrEqual(before);
+    });
+
+    it('a second login for an attested user reports needs_attestation=false', async () => {
+      const first = await login('mock:uid-1:alice@example.com');
+      await service.attest({ userId: first.user.id, dateOfBirth: dob(1998) });
+      const second = await login('mock:uid-1:alice@example.com');
+      expect(second.user.needs_attestation).toBe(false);
+    });
+
+    it('rejects an under-18 DOB server-side (403) without saving', async () => {
+      const loginResult = await login('mock:uid-1:alice@example.com');
+      await expect(
+        service.attest({ userId: loginResult.user.id, dateOfBirth: dob(2020) }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(fake.usersStore[0].dateOfBirth).toBeNull();
+    });
+
+    it('applies a referral code at attest time for a new user', async () => {
+      const referrer = fake.seedUser({ googleUid: 'uid-ref', referralCode: 'REFER123' });
+      const loginResult = await login('mock:uid-new:new@example.com');
+      await service.attest({
+        userId: loginResult.user.id,
+        dateOfBirth: dob(1998),
+        referralCode: 'REFER123',
+      });
+      expect(fake.referralsStore).toHaveLength(1);
+      expect(fake.referralsStore[0].referrerId).toBe(referrer.id);
+      expect(fake.referralsStore[0].referredId).toBe(loginResult.user.id);
+    });
+
+    it('is idempotent for an already-attested user (no re-write, no re-link)', async () => {
+      fake.seedUser({ googleUid: 'uid-ref', referralCode: 'REFER123' });
+      const loginResult = await login('mock:uid-new:new@example.com');
+      await service.attest({ userId: loginResult.user.id, dateOfBirth: dob(1998) });
+      const firstAttestedAt = fake.usersStore.find((u) => u.id === loginResult.user.id)!.attestedAt;
+
+      // Second attest with a referral must NOT re-link or overwrite the DOB.
+      const again = await service.attest({
+        userId: loginResult.user.id,
+        dateOfBirth: dob(1990),
+        referralCode: 'REFER123',
+      });
+      expect(again.user.needs_attestation).toBe(false);
+      const stored = fake.usersStore.find((u) => u.id === loginResult.user.id)!;
+      expect(stored.dateOfBirth).toEqual(dob(1998));
+      expect(stored.attestedAt).toBe(firstAttestedAt);
+      expect(fake.referralsStore).toHaveLength(0);
+    });
+
+    it('rejects attest for an unknown user (401)', async () => {
+      await expect(
+        service.attest({ userId: 'no-such-user', dateOfBirth: dob(1998) }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
+
   describe('referral linkage', () => {
     it('links a valid referral code with config snapshot (percent + window)', async () => {
       const referrer = fake.seedUser({ googleUid: 'uid-ref', referralCode: 'REFER123' });

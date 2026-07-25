@@ -209,3 +209,9 @@ Decisions needed: (a) privacy/T&C legal review (draft from Data & Security doc);
 - Uses: public privacy-policy URL for Play Store listing (cashraja.graduatedcoder.in/privacy or landing section); production API_BASE_URL for the app (https://api.cashraja.graduatedcoder.in/api); offerwall postback base URL for v2 (e.g. CPX -> https://api.cashraja.graduatedcoder.in/api/webhooks/offerwall/cpx).
 - DNS wiring at deploy: VPS = A records -> VPS IP + Caddy/nginx + Let's Encrypt SSL; free stack = CNAME to Cloudflare Pages / Fly.io targets. Phase F outputs the exact records.
 - App release build must set --dart-define=API_BASE_URL=https://api.cashraja.graduatedcoder.in/api (replacing the localhost dev tunnel).
+
+- [ ] H7 Rich manual-offer instructions (owner 2026-07-25): instructions field becomes Markdown.
+  * Admin (ManualOffersPage create/edit): instructions textarea + formatting TOOLBAR (Bold, Link, Monospace/Code, numbered list) that inserts markdown, + live PREVIEW of how it renders. Store markdown in the existing `instructions` field (no schema change; maybe raise length limit).
+  * App (manual_offers_screen): render instructions as markdown via flutter_markdown — **clickable links** (tap → open URL via url_launcher, external browser or in-app webview), **bold**, **monospace/code with tap-to-copy** (for codes users must paste), bold/numeric, bullet/numbered lists. Add deps flutter_markdown + url_launcher.
+  * Show the same formatted rendering on the app that the admin previewed.
+  Build AFTER the running attestation-fix + gift-card-catalog agents finish (avoid app/admin file + pubspec conflicts). Batches with the next app rebuild.

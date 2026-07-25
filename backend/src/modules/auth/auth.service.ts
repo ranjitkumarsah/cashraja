@@ -42,6 +42,18 @@ export interface AuthUserView {
   email: string;
   coin_balance_cached: number;
   referral_code: string;
+  /** True until the user completes the server-side 18+ DOB attestation. */
+  needs_attestation: boolean;
+}
+
+export interface AttestParams {
+  userId: string;
+  dateOfBirth: Date;
+  referralCode?: string;
+}
+
+export interface AttestResult {
+  user: AuthUserView;
 }
 
 export interface AuthTokens {
@@ -110,16 +122,46 @@ export class AuthService {
     }
 
     const tokens = await this.issueTokens(user.id);
-    return {
-      ...tokens,
-      user: {
-        id: user.id,
-        display_name: user.displayName,
-        email: user.email,
-        coin_balance_cached: user.coinBalanceCached,
-        referral_code: user.referralCode,
-      },
-    };
+    return { ...tokens, user: this.toUserView(user) };
+  }
+
+  /**
+   * Server-authoritative 18+ attestation (A4.2 / PRD age gate). The session
+   * already exists (JWT-protected); this persists the attested date of birth
+   * and, for a brand-new user, links their referral. Enforced server-side:
+   *  - already-attested users return idempotently (no re-write, no re-link);
+   *  - a date of birth under 18 is rejected (403) — the client check is UX only.
+   */
+  async attest(params: AttestParams): Promise<AttestResult> {
+    const user = await this.prisma.user.findUnique({ where: { id: params.userId } });
+    if (!user) {
+      throw new UnauthorizedException('Unknown user');
+    }
+    if (user.status === UserStatus.banned) {
+      throw new ForbiddenException('Account is banned');
+    }
+
+    // Idempotent: a user who has already attested keeps their existing DOB and
+    // is simply told attestation is no longer needed.
+    if (user.dateOfBirth !== null) {
+      return { user: this.toUserView(user) };
+    }
+
+    if (!this.isAdult(params.dateOfBirth)) {
+      throw new ForbiddenException('You must be 18 or older to use Cash Raja');
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { dateOfBirth: params.dateOfBirth, attestedAt: new Date() },
+    });
+
+    // Referral only matters at the user's first (and only) attestation.
+    if (params.referralCode) {
+      await this.linkReferral(updated, params.referralCode);
+    }
+
+    return { user: this.toUserView(updated) };
   }
 
   /**
@@ -179,6 +221,27 @@ export class AuthService {
   }
 
   // ─── internals ───
+
+  private toUserView(user: User): AuthUserView {
+    return {
+      id: user.id,
+      display_name: user.displayName,
+      email: user.email,
+      coin_balance_cached: user.coinBalanceCached,
+      referral_code: user.referralCode,
+      needs_attestation: user.dateOfBirth === null,
+    };
+  }
+
+  /** True when [dob] is at least 18 years before [now] (birthday inclusive). */
+  private isAdult(dob: Date, now: Date = new Date()): boolean {
+    const eighteenth = new Date(
+      dob.getFullYear() + 18,
+      dob.getMonth(),
+      dob.getDate(),
+    );
+    return eighteenth.getTime() <= now.getTime();
+  }
 
   private async createUser(
     identity: VerifiedFirebaseToken,

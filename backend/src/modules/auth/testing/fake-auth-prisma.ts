@@ -43,6 +43,8 @@ export class FakeAuthPrisma {
       status: partial.status ?? UserStatus.active,
       coinBalanceCached: partial.coinBalanceCached ?? 0,
       referralCode: partial.referralCode,
+      dateOfBirth: partial.dateOfBirth ?? null,
+      attestedAt: partial.attestedAt ?? null,
       createdAt: partial.createdAt ?? new Date(),
       lastSeenAt: partial.lastSeenAt ?? new Date(),
     };
@@ -96,6 +98,8 @@ export class FakeAuthPrisma {
         status: (data.status) ?? UserStatus.active,
         coinBalanceCached: data.coinBalanceCached ?? 0,
         referralCode: data.referralCode,
+        dateOfBirth: (data.dateOfBirth as Date | null | undefined) ?? null,
+        attestedAt: (data.attestedAt as Date | null | undefined) ?? null,
         createdAt: new Date(),
         lastSeenAt: new Date(),
       };
@@ -104,11 +108,13 @@ export class FakeAuthPrisma {
     },
     update: (args: {
       where: { id: string };
-      data: { lastSeenAt?: Date };
+      data: { lastSeenAt?: Date; dateOfBirth?: Date | null; attestedAt?: Date | null };
     }): Promise<User> => {
       const user = this.usersStore.find((u) => u.id === args.where.id);
       if (!user) throw notFound();
       if (args.data.lastSeenAt) user.lastSeenAt = args.data.lastSeenAt;
+      if (args.data.dateOfBirth !== undefined) user.dateOfBirth = args.data.dateOfBirth;
+      if (args.data.attestedAt !== undefined) user.attestedAt = args.data.attestedAt;
       return Promise.resolve(user);
     },
   };

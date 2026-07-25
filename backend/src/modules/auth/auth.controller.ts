@@ -1,8 +1,19 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
-import { AuthService, AuthTokens, GoogleLoginResult } from './auth.service';
+import { AuthenticatedUser, CurrentUser, JwtAuthGuard } from '../../common/auth';
+import { AttestResult, AuthService, AuthTokens, GoogleLoginResult } from './auth.service';
 import { clientIpOf } from './client-ip';
+import { AttestDto } from './dto/attest.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { RefreshDto } from './dto/refresh.dto';
 
@@ -20,6 +31,25 @@ export class AuthController {
       deviceFingerprint: dto.device_fingerprint,
       referralCode: dto.referral_code,
       clientIp: clientIpOf(req),
+    });
+  }
+
+  /**
+   * Server-authoritative 18+ attestation (JWT-protected). Persists the DOB and
+   * links the referral for a brand-new user. Enforces 18+ server-side.
+   */
+  @Post('attest')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  attest(
+    @CurrentUser() user: AuthenticatedUser | undefined,
+    @Body() dto: AttestDto,
+  ): Promise<AttestResult> {
+    if (!user) throw new UnauthorizedException();
+    return this.auth.attest({
+      userId: user.id,
+      dateOfBirth: new Date(dto.date_of_birth),
+      referralCode: dto.referral_code,
     });
   }
 

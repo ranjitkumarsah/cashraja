@@ -30,6 +30,7 @@ class FakeApiClient extends ApiClient {
     this.redemptionsData,
     this.meData,
     this.onLogin,
+    this.onAttest,
     this.onRedeem,
     this.referralCodeData,
     this.referralStatsData,
@@ -64,6 +65,7 @@ class FakeApiClient extends ApiClient {
   final List<Redemption>? redemptionsData;
   final MeProfile? meData;
   final LoginResult Function()? onLogin;
+  final AuthUser Function(DateTime dateOfBirth, String? referralCode)? onAttest;
   final Redemption Function(String giftCardId)? onRedeem;
   final ReferralCode? referralCodeData;
   final ReferralStats? referralStatsData;
@@ -140,9 +142,9 @@ class FakeApiClient extends ApiClient {
   Future<LoginResult> googleLogin({
     required String idToken,
     required String deviceFingerprint,
-    String? referralCode,
   }) async {
     if (onLogin != null) return onLogin!();
+    // A fresh user by default: the server still needs the 18+ attestation.
     return const LoginResult(
       tokens: AuthTokens(accessToken: 'a', refreshToken: 'r'),
       user: AuthUser(
@@ -151,7 +153,23 @@ class FakeApiClient extends ApiClient {
         email: 'dev@cashraja.local',
         coinBalance: 100,
         referralCode: 'RAJA1234',
+        needsAttestation: true,
       ),
+    );
+  }
+
+  @override
+  Future<AuthUser> attest({
+    required DateTime dateOfBirth,
+    String? referralCode,
+  }) async {
+    if (onAttest != null) return onAttest!(dateOfBirth, referralCode);
+    return const AuthUser(
+      id: 'u1',
+      displayName: 'Dev User',
+      email: 'dev@cashraja.local',
+      coinBalance: 100,
+      referralCode: 'RAJA1234',
     );
   }
 
