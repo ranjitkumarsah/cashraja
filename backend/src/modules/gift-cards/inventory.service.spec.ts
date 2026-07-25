@@ -19,9 +19,18 @@ interface Row {
   createdAt: Date;
 }
 
+interface FakeCard {
+  id: string;
+  brand: string;
+  denomination: number;
+  coinCost: number;
+  isActive: boolean;
+}
+
 /** Fake enforcing the (brand, denomination, codeFingerprint) unique constraint. */
 class FakeInventoryPrisma {
   rows: Row[] = [];
+  cards: FakeCard[] = [];
   audits: Array<{ action: string; targetId: string | null }> = [];
 
   async $transaction<T>(fn: (tx: unknown) => Promise<T>): Promise<T> {
@@ -30,6 +39,19 @@ class FakeInventoryPrisma {
 
   private txClient(): unknown {
     return {
+      giftCard: {
+        findUnique: (args: { where: { brand_denomination: { brand: string; denomination: number } } }) => {
+          const { brand, denomination } = args.where.brand_denomination;
+          return Promise.resolve(
+            this.cards.find((c) => c.brand === brand && c.denomination === denomination) ?? null,
+          );
+        },
+        create: (args: { data: Omit<FakeCard, 'id'> }) => {
+          const card: FakeCard = { id: randomUUID(), ...args.data };
+          this.cards.push(card);
+          return Promise.resolve(card);
+        },
+      },
       giftCardInventory: {
         create: (args: { data: Omit<Row, 'id' | 'createdAt'> }) => {
           const d = args.data;
@@ -115,6 +137,26 @@ describe('InventoryService.upload', () => {
     const second = await service.upload('admin-1', GiftCardBrand.amazon, 100, 'DUP-CODE\nNEW-CODE');
     expect(second.inserted).toBe(1); // only NEW-CODE
     expect(prisma.rows).toHaveLength(2);
+  });
+
+  it('auto-creates the catalog row for a new brand+denomination (offerable)', async () => {
+    const { service, prisma } = build();
+    await service.upload('admin-1', GiftCardBrand.amazon, 10, 'AMZ-10-A\nAMZ-10-B');
+    expect(prisma.cards).toHaveLength(1);
+    const card = prisma.cards[0];
+    expect(card.brand).toBe(GiftCardBrand.amazon);
+    expect(card.denomination).toBe(10);
+    expect(card.isActive).toBe(true);
+    // coin_cost column is reference-only (denomination × default rate 100).
+    expect(card.coinCost).toBe(1000);
+    expect(prisma.audits.some((a) => a.action === 'gift_card_created')).toBe(true);
+  });
+
+  it('does not duplicate the catalog row on a second upload for the same denomination', async () => {
+    const { service, prisma } = build();
+    await service.upload('admin-1', GiftCardBrand.amazon, 10, 'AMZ-10-A');
+    await service.upload('admin-1', GiftCardBrand.amazon, 10, 'AMZ-10-B');
+    expect(prisma.cards).toHaveLength(1);
   });
 });
 

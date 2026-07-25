@@ -62,7 +62,8 @@ describeIt('Redemption flow (integration, HTTP + Postgres + Redis)', () => {
   }
 
   it('reserves coins at request time and rejects a second request over balance (400)', async () => {
-    const userId = await harness.createUser({ balance: 1000, createdAt: TEN_DAYS_AGO });
+    // Cost is COMPUTED: denomination × 100 (config rate). cardA (₹401) = 40100.
+    const userId = await harness.createUser({ balance: 40100, createdAt: TEN_DAYS_AGO });
     const token = await harness.appJwtFor(userId);
     const cardA = await harness.createGiftCard(GiftCardBrand.amazon, 401, 1000);
     const cardB = await harness.createGiftCard(GiftCardBrand.amazon, 402, 1000);
@@ -71,13 +72,13 @@ describeIt('Redemption flow (integration, HTTP + Postgres + Redis)', () => {
     expect(first.body.status).toBe(RedemptionStatus.requested);
     expect(await harness.ledger.getBalance(userId)).toBe(0); // reserved immediately
 
-    await requestRedemption(token, cardB).expect(400); // insufficient now
+    await requestRedemption(token, cardB).expect(400); // insufficient now (₹402 = 40200)
   });
 
   it('concurrent requests for the full balance — exactly one succeeds (E2E #5)', async () => {
-    const userId = await harness.createUser({ balance: 1000, createdAt: TEN_DAYS_AGO });
+    const userId = await harness.createUser({ balance: 40300, createdAt: TEN_DAYS_AGO });
     const token = await harness.appJwtFor(userId);
-    const card = await harness.createGiftCard(GiftCardBrand.flipkart, 403, 1000);
+    const card = await harness.createGiftCard(GiftCardBrand.flipkart, 403, 1000); // ₹403 = 40300
 
     const results = await Promise.all(
       Array.from({ length: 5 }, () => requestRedemption(token, card)),
@@ -93,9 +94,9 @@ describeIt('Redemption flow (integration, HTTP + Postgres + Redis)', () => {
   });
 
   it('reject reverses the reserved debit with a compensating row (E2E #3)', async () => {
-    const userId = await harness.createUser({ balance: 1000, createdAt: TEN_DAYS_AGO });
+    const userId = await harness.createUser({ balance: 40400, createdAt: TEN_DAYS_AGO });
     const token = await harness.appJwtFor(userId);
-    const card = await harness.createGiftCard(GiftCardBrand.amazon, 404, 1000);
+    const card = await harness.createGiftCard(GiftCardBrand.amazon, 404, 1000); // ₹404 = 40400
 
     const created = await requestRedemption(token, card).expect(201);
     const redemptionId = created.body.id as string;
@@ -109,16 +110,16 @@ describeIt('Redemption flow (integration, HTTP + Postgres + Redis)', () => {
     expect(rejected.body.status).toBe(RedemptionStatus.rejected);
     expect(rejected.body.rejection_reason).toBe('suspected fraud');
 
-    expect(await harness.ledger.getBalance(userId)).toBe(1000); // coins returned
+    expect(await harness.ledger.getBalance(userId)).toBe(40400); // coins returned
     const ledgerRows = await harness.prisma.coinLedger.findMany({ where: { userId } });
     // seed credit + reserve debit + reversal credit
     expect(ledgerRows.filter((r) => r.sourceType === 'redemption')).toHaveLength(2);
   });
 
   it('approve issues a code from inventory and delivers an in-app notification', async () => {
-    const userId = await harness.createUser({ balance: 1000, createdAt: TEN_DAYS_AGO });
+    const userId = await harness.createUser({ balance: 40500, createdAt: TEN_DAYS_AGO });
     const token = await harness.appJwtFor(userId);
-    const card = await harness.createGiftCard(GiftCardBrand.amazon, 405, 1000);
+    const card = await harness.createGiftCard(GiftCardBrand.amazon, 405, 1000); // ₹405 = 40500
     await uploadInventory(GiftCardBrand.amazon, 405, 'AMZN-405-PLAINTEXT').expect(201);
 
     const created = await requestRedemption(token, card).expect(201);
@@ -152,9 +153,9 @@ describeIt('Redemption flow (integration, HTTP + Postgres + Redis)', () => {
   });
 
   it('out-of-stock keeps the paid redemption approved (never lost) and fulfils on restock', async () => {
-    const userId = await harness.createUser({ balance: 1000, createdAt: TEN_DAYS_AGO });
+    const userId = await harness.createUser({ balance: 40600, createdAt: TEN_DAYS_AGO });
     const token = await harness.appJwtFor(userId);
-    const card = await harness.createGiftCard(GiftCardBrand.flipkart, 406, 1000);
+    const card = await harness.createGiftCard(GiftCardBrand.flipkart, 406, 1000); // ₹406 = 40600
 
     const created = await requestRedemption(token, card).expect(201);
     const redemptionId = created.body.id as string;
@@ -181,9 +182,9 @@ describeIt('Redemption flow (integration, HTTP + Postgres + Redis)', () => {
   });
 
   it('a user banned after requesting is held for manual review, never auto-issued (P6)', async () => {
-    const userId = await harness.createUser({ balance: 1000, createdAt: TEN_DAYS_AGO });
+    const userId = await harness.createUser({ balance: 40700, createdAt: TEN_DAYS_AGO });
     const token = await harness.appJwtFor(userId);
-    const card = await harness.createGiftCard(GiftCardBrand.amazon, 407, 1000);
+    const card = await harness.createGiftCard(GiftCardBrand.amazon, 407, 1000); // ₹407 = 40700
     await uploadInventory(GiftCardBrand.amazon, 407, 'AMZN-407-CODE').expect(201);
 
     const created = await requestRedemption(token, card).expect(201);
@@ -209,9 +210,9 @@ describeIt('Redemption flow (integration, HTTP + Postgres + Redis)', () => {
   });
 
   it('routes a brand-new account to manual review (redemption abuse pre-screen)', async () => {
-    const userId = await harness.createUser({ balance: 1000 }); // createdAt = now
+    const userId = await harness.createUser({ balance: 40800 }); // createdAt = now
     const token = await harness.appJwtFor(userId);
-    const card = await harness.createGiftCard(GiftCardBrand.google_play, 408, 1000);
+    const card = await harness.createGiftCard(GiftCardBrand.google_play, 408, 1000); // ₹408 = 40800
 
     const created = await requestRedemption(token, card).expect(201);
     expect(created.body.status).toBe(RedemptionStatus.under_review);

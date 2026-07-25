@@ -44,6 +44,11 @@ const CONFIG_DEFAULTS: Array<{ key: string; value: object }> = [
   { key: 'redemption.min_account_age_hours', value: { hours: 72 } },
   // Phase C — gift-card inventory low-stock alert threshold (per brand+denom)
   { key: 'inventory.low_stock_threshold', value: { threshold: 5 } },
+  // Gift-card pricing rate (owner decision): coins per ₹1. Coin cost is COMPUTED
+  // everywhere as denomination × this rate — gift_cards.coin_cost is no longer
+  // the source of truth. Editable via the admin Config screen. Default 100 →
+  // ₹10 = 1000 coins, ₹50 = 5000.
+  { key: 'giftcard.coins_per_rupee', value: { value: 100 } },
   // Phase B — postback pipeline + ad SSV rewards
   { key: 'offers.pending_expiry_days', value: { days: 30 } },
   // G7 — rewarded views credited per user per UTC day (client-gated + SSV share this cap)

@@ -1,6 +1,13 @@
 import { GiftCardBrand, InventoryStatus } from '@prisma/client';
+import { AppConfigService } from '../../common/app-config/app-config.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { GiftCardsService } from './gift-cards.service';
+
+/** Fixed conversion rate: coins per ₹1 (config default). */
+const RATE = 100;
+const fakeAppConfig = {
+  giftCardCoinsPerRupee: () => Promise.resolve(RATE),
+} as unknown as AppConfigService;
 
 interface FakeCard {
   id: string;
@@ -61,7 +68,7 @@ describe('GiftCardsService availability (G0.2)', () => {
 
   beforeEach(() => {
     prisma = new FakeGiftCardPrisma();
-    service = new GiftCardsService(prisma as unknown as PrismaService);
+    service = new GiftCardsService(prisma as unknown as PrismaService, fakeAppConfig);
     prisma.cards = [
       {
         id: 'c50',
@@ -98,5 +105,13 @@ describe('GiftCardsService availability (G0.2)', () => {
   it('defaults `available` to 0 when there is no inventory', async () => {
     const list = await service.listActive();
     expect(list.every((c) => c.available === 0)).toBe(true);
+  });
+
+  it('COMPUTES coin_cost as denomination × config rate (ignores the stored column)', async () => {
+    // Stored coinCost columns are deliberately wrong (999) — pricing must not use them.
+    prisma.cards = prisma.cards.map((c) => ({ ...c, coinCost: 999 }));
+    const list = await service.listActive();
+    expect(list.find((c) => c.id === 'c50')!.coin_cost).toBe(50 * RATE); // 5000
+    expect(list.find((c) => c.id === 'c100')!.coin_cost).toBe(100 * RATE); // 10000
   });
 });

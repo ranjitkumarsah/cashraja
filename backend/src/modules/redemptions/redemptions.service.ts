@@ -8,6 +8,7 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { ALERT_SERVICE, AlertService } from '../../common/alerts/alert.service';
+import { AppConfigService } from '../../common/app-config/app-config.service';
 import { AUDIT_ACTIONS, writeAuditLog } from '../../common/audit/admin-audit';
 import { GiftCardCryptoService } from '../../common/crypto/giftcard-crypto.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -55,6 +56,7 @@ export class RedemptionsService {
     @Inject(REDEMPTION_QUEUE) private readonly retryQueue: RedemptionQueue,
     @Inject(ALERT_SERVICE) private readonly alerts: AlertService,
     private readonly fraudEngine: FraudEngineService,
+    private readonly appConfig: AppConfigService,
   ) {}
 
   /**
@@ -81,12 +83,18 @@ export class RedemptionsService {
 
     const redemptionId = randomUUID();
 
+    // Coin cost is COMPUTED from the config rate (denomination × coins_per_rupee),
+    // NOT read from the stored gift_cards.coin_cost column. This is the money
+    // amount reserved, stored as coin_amount, and shown back to the user.
+    const coinsPerRupee = await this.appConfig.giftCardCoinsPerRupee();
+    const coinCost = giftCard.denomination * coinsPerRupee;
+
     // Reserve immediately (money gate). InsufficientBalance → 400.
     let reserveEntryId: string;
     try {
       const reserve = await this.ledger.reserveDebit({
         userId,
-        amount: giftCard.coinCost,
+        amount: coinCost,
         sourceType: LedgerSourceType.redemption,
         sourceRefId: redemptionId,
         idempotencyKey: reserveKey(redemptionId),
@@ -103,9 +111,9 @@ export class RedemptionsService {
     // routed to manual review; a young account requesting the MAX-value card
     // additionally opens a fraud_flag (FraudEngineService is the single writer).
     const ageHours = (Date.now() - user.createdAt.getTime()) / 3_600_000;
-    const isMaxValue = await this.isMaxValueCard(giftCard.coinCost);
+    const isMaxValue = await this.isMaxValueDenomination(giftCard.denomination);
     const screen = await this.fraudEngine
-      .screenRedemption({ userId, coinCost: giftCard.coinCost, isMaxValue, accountAgeHours: ageHours })
+      .screenRedemption({ userId, coinCost, isMaxValue, accountAgeHours: ageHours })
       .catch((err: unknown) => {
         // A pre-screen failure must never block a paid-for redemption.
         this.logger.error(
@@ -130,7 +138,7 @@ export class RedemptionsService {
           id: redemptionId,
           userId,
           giftCardId,
-          coinAmount: giftCard.coinCost,
+          coinAmount: coinCost,
           status: initialStatus,
         },
         include: { giftCard: true },
@@ -271,13 +279,18 @@ export class RedemptionsService {
     });
   }
 
-  /** True when coinCost is the maximum coin_cost across the active catalog. */
-  private async isMaxValueCard(coinCost: number): Promise<boolean> {
+  /**
+   * True when this denomination is the maximum across the active catalog. Coin
+   * cost is a strictly increasing function of denomination (denomination ×
+   * rate), so the highest denomination is the highest-value card — we compare
+   * denominations rather than the (now reference-only) coin_cost column.
+   */
+  private async isMaxValueDenomination(denomination: number): Promise<boolean> {
     const max = await this.prisma.giftCard.aggregate({
       where: { isActive: true },
-      _max: { coinCost: true },
+      _max: { denomination: true },
     });
-    return coinCost >= (max._max.coinCost ?? coinCost);
+    return denomination >= (max._max.denomination ?? denomination);
   }
 
   /** Map a redemption to its API view. Decrypts the code only for the owner. */
@@ -291,7 +304,9 @@ export class RedemptionsService {
         id: redemption.giftCard.id,
         brand: redemption.giftCard.brand,
         denomination: redemption.giftCard.denomination,
-        coin_cost: redemption.giftCard.coinCost,
+        // The coins reserved for THIS redemption (denomination × config rate at
+        // request time) — consistent with coin_amount, not the stored column.
+        coin_cost: redemption.coinAmount,
       },
       coin_amount: redemption.coinAmount,
       status: redemption.status,

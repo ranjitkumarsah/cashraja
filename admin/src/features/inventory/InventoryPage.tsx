@@ -110,7 +110,10 @@ function UploadForm() {
 
   return (
     <Card>
-      <CardHeader title="Upload codes" description="Paste one code per line (or comma-separated)." />
+      <CardHeader
+        title="Upload codes"
+        description="Paste one code per line (or comma-separated). Uploading codes for a new denomination makes it available in the app automatically — no separate catalog step."
+      />
       <CardContent>
         <form
           className="space-y-4"

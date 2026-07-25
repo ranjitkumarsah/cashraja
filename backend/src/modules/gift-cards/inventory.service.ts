@@ -1,7 +1,10 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { GiftCardBrand, InventoryStatus, Prisma } from '@prisma/client';
 import { ALERT_SERVICE, AlertService } from '../../common/alerts/alert.service';
-import { AppConfigService } from '../../common/app-config/app-config.service';
+import {
+  AppConfigService,
+  GIFTCARD_COINS_PER_RUPEE_CONFIG,
+} from '../../common/app-config/app-config.service';
 import { AUDIT_ACTIONS, writeAuditLog } from '../../common/audit/admin-audit';
 import { GiftCardCryptoService, maskCode } from '../../common/crypto/giftcard-crypto.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -83,6 +86,31 @@ export class InventoryService {
 
     let inserted = 0;
     await this.prisma.$transaction(async (tx) => {
+      // Inventory upload is the SOLE way to add a gift card (no catalog screen).
+      // Auto-create the catalog row for a (brand, denomination) first seen here
+      // so the denomination becomes offerable and redemptions.gift_card_id has a
+      // valid FK. coin_cost stored here is REFERENCE-ONLY (denomination × default
+      // rate); pricing always reads giftcard.coins_per_rupee, never this column.
+      const existingCard = await tx.giftCard.findUnique({
+        where: { brand_denomination: { brand, denomination } },
+      });
+      if (!existingCard) {
+        const created = await tx.giftCard.create({
+          data: {
+            brand,
+            denomination,
+            coinCost: denomination * GIFTCARD_COINS_PER_RUPEE_CONFIG.fallback,
+            isActive: true,
+          },
+        });
+        await writeAuditLog(tx, {
+          adminId,
+          action: AUDIT_ACTIONS.GIFT_CARD_CREATED,
+          targetType: 'gift_card',
+          targetId: created.id,
+          reason: `auto-created via inventory upload: ${brand} ₹${denomination}`,
+        });
+      }
       for (const code of unique) {
         try {
           await tx.giftCardInventory.create({

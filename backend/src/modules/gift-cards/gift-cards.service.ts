@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { GiftCard, GiftCardBrand, InventoryStatus, Prisma } from '@prisma/client';
+import { AppConfigService } from '../../common/app-config/app-config.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AUDIT_ACTIONS, writeAuditLog } from '../../common/audit/admin-audit';
 
@@ -7,6 +8,11 @@ export interface GiftCardView {
   id: string;
   brand: string;
   denomination: number;
+  /**
+   * COMPUTED coins required to redeem = denomination × giftcard.coins_per_rupee
+   * (the admin-tunable config rate). The stored gift_cards.coin_cost column is
+   * NOT used for pricing.
+   */
   coin_cost: number;
   is_active: boolean;
   /** unused inventory codes available for this brand+denomination (G0.2) */
@@ -33,16 +39,22 @@ export interface UpdateGiftCardInput {
  */
 @Injectable()
 export class GiftCardsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly appConfig: AppConfigService,
+  ) {}
 
   /** Public catalog (JWT): active cards only, cheapest first. */
   async listActive(): Promise<GiftCardView[]> {
     const cards = await this.prisma.giftCard.findMany({
       where: { isActive: true },
-      orderBy: [{ coinCost: 'asc' }],
+      orderBy: [{ denomination: 'asc' }],
     });
-    const stock = await this.unusedStockByCard();
-    return cards.map((c) => toView(c, stock));
+    const [stock, rate] = await Promise.all([
+      this.unusedStockByCard(),
+      this.appConfig.giftCardCoinsPerRupee(),
+    ]);
+    return cards.map((c) => toView(c, rate, stock));
   }
 
   /** Admin catalog: everything, incl. disabled cards. */
@@ -50,8 +62,11 @@ export class GiftCardsService {
     const cards = await this.prisma.giftCard.findMany({
       orderBy: [{ brand: 'asc' }, { denomination: 'asc' }],
     });
-    const stock = await this.unusedStockByCard();
-    return cards.map((c) => toView(c, stock));
+    const [stock, rate] = await Promise.all([
+      this.unusedStockByCard(),
+      this.appConfig.giftCardCoinsPerRupee(),
+    ]);
+    return cards.map((c) => toView(c, rate, stock));
   }
 
   /**
@@ -93,7 +108,7 @@ export class GiftCardsService {
         });
         return created;
       });
-      return toView(card);
+      return toView(card, await this.appConfig.giftCardCoinsPerRupee());
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new ConflictException('A gift card for this brand and denomination already exists');
@@ -124,7 +139,7 @@ export class GiftCardsService {
       });
       return updated;
     });
-    return toView(card);
+    return toView(card, await this.appConfig.giftCardCoinsPerRupee());
   }
 }
 
@@ -135,12 +150,13 @@ function describeChange(input: UpdateGiftCardInput): string {
   return parts.join(' ');
 }
 
-function toView(card: GiftCard, stock?: Map<string, number>): GiftCardView {
+function toView(card: GiftCard, coinsPerRupee: number, stock?: Map<string, number>): GiftCardView {
   return {
     id: card.id,
     brand: card.brand,
     denomination: card.denomination,
-    coin_cost: card.coinCost,
+    // COMPUTED from the config rate — the stored card.coinCost column is ignored.
+    coin_cost: card.denomination * coinsPerRupee,
     is_active: card.isActive,
     available: stock?.get(`${card.brand}:${card.denomination}`) ?? 0,
     created_at: card.createdAt.toISOString(),

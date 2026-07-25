@@ -2,6 +2,19 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
+ * Gift-card pricing rate (owner decision): coins required per ₹1 of
+ * denomination. Coin cost is COMPUTED everywhere as
+ * `denomination × coins_per_rupee` — the stored gift_cards.coin_cost column is
+ * no longer the source of truth. Editable via the admin Config screen (seeded
+ * as `{ value: 100 }` → ₹1 = 100 coins, so ₹10 = 1000, ₹50 = 5000).
+ */
+export const GIFTCARD_COINS_PER_RUPEE_CONFIG = {
+  key: 'giftcard.coins_per_rupee',
+  field: 'value',
+  fallback: 100,
+} as const;
+
+/**
  * Read side of the versioned app_config table: current value of a key is the
  * row with max(version). Values are small jsonb objects (see prisma/seed.ts).
  * A short in-process TTL cache keeps hot paths (webhooks) off the DB; admin
@@ -43,6 +56,20 @@ export class AppConfigService {
       this.logger.warn(`app_config ${key}.${field} missing/invalid — using default ${fallback}`);
     }
     return fallback;
+  }
+
+  /**
+   * Gift-card conversion rate (coins per ₹1). Reads
+   * `giftcard.coins_per_rupee.value`, defaulting to 100 when unset. This is the
+   * single source of truth for gift-card pricing — never read
+   * gift_cards.coin_cost for money math.
+   */
+  async giftCardCoinsPerRupee(): Promise<number> {
+    return this.getNumber(
+      GIFTCARD_COINS_PER_RUPEE_CONFIG.key,
+      GIFTCARD_COINS_PER_RUPEE_CONFIG.field,
+      GIFTCARD_COINS_PER_RUPEE_CONFIG.fallback,
+    );
   }
 
   /** Drop the TTL cache (tests, admin config writes). */
