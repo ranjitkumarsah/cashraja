@@ -9,6 +9,7 @@ import 'models/bonus.dart';
 import 'models/feedback.dart';
 import 'models/game.dart';
 import 'models/gift_card.dart';
+import 'models/manual_offer.dart';
 import 'models/offer.dart';
 import 'models/redemption.dart';
 import 'models/referral.dart';
@@ -165,6 +166,34 @@ class ApiClient {
   Future<ReferralBreakdown> referralBreakdown() async {
     final Map<String, dynamic> body = await _get('/referral/breakdown');
     return ReferralBreakdown.fromJson(body);
+  }
+
+  // ---- Manual offers (H5) -----------------------------------------------
+
+  Future<List<ManualOffer>> manualOffers() async {
+    final List<dynamic> body = await _getList('/manual-offers');
+    return body
+        .map((dynamic e) => ManualOffer.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<List<ManualOfferSubmission>> myManualOfferSubmissions() async {
+    final List<dynamic> body = await _getList('/manual-offers/mine');
+    return body
+        .map((dynamic e) =>
+            ManualOfferSubmission.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<ManualOfferSubmission> submitManualOfferProof(
+    String offerId,
+    String proofText,
+  ) async {
+    final Map<String, dynamic> body = await _post(
+      '/manual-offers/$offerId/submit',
+      data: <String, dynamic>{'proof_text': proofText},
+    );
+    return ManualOfferSubmission.fromJson(body);
   }
 
   // ---- Feedback / complaints (H4) ---------------------------------------

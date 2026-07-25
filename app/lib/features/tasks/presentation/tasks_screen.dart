@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/api/models/offer.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/raja_colors.dart';
 import '../../../core/theme/raja_theme.dart';
 import '../../../core/widgets/app_card.dart';
@@ -67,32 +69,97 @@ class TasksScreen extends ConsumerWidget {
               onRetry: () =>
                   ref.read(offersControllerProvider.notifier).refresh(),
               data: (List<Offer> list) {
-                if (list.isEmpty) {
-                  return ListView(
-                    children: const <Widget>[
-                      SizedBox(height: 120),
-                      EmptyStateView(
-                        icon: Icons.inbox_rounded,
-                        title: 'No offers right now',
-                        subtitle:
-                            'Check back soon — new tasks are added regularly.',
-                      ),
-                    ],
-                  );
-                }
-                return ListView.separated(
+                return ListView(
                   padding: const EdgeInsets.all(16),
-                  itemCount: list.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (_, int i) => _OfferCard(
-                    offer: list[i],
-                    onTap: () => _launch(context, ref, list[i]),
-                  ),
+                  children: <Widget>[
+                    // Entry point into the manual offers + text-proof flow (H5).
+                    _ManualOffersEntry(
+                      onTap: () => context.push(Routes.manualOffers),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Offerwall',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: RajaColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (list.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 40),
+                        child: EmptyStateView(
+                          icon: Icons.inbox_rounded,
+                          title: 'No offers right now',
+                          subtitle:
+                              'Check back soon — new tasks are added regularly.',
+                        ),
+                      )
+                    else
+                      for (final Offer o in list) ...<Widget>[
+                        _OfferCard(
+                          offer: o,
+                          onTap: () => _launch(context, ref, o),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                  ],
                 );
               },
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Tasks-tab entry point into the H5 manual-offers flow.
+class _ManualOffersEntry extends StatelessWidget {
+  const _ManualOffersEntry({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: RajaColors.goldGradient,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.assignment_turned_in_rounded,
+                color: Color(0xFF1A1300)),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Manual offers',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: RajaColors.textPrimary,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Complete a task and submit proof to earn coins.',
+                  style: TextStyle(color: RajaColors.textMuted, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: RajaColors.textMuted),
+        ],
       ),
     );
   }

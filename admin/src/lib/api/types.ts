@@ -252,6 +252,33 @@ export interface AdminFeedbackView {
   resolved_at: string | null;
 }
 
+/* H5 — Manual offers + text-proof review */
+export interface AdminManualOfferView {
+  id: string;
+  title: string;
+  description: string;
+  instructions: string;
+  coin_reward: number;
+  is_active: boolean;
+  created_by_admin_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ManualOfferSubmissionStatus = 'pending' | 'approved' | 'rejected';
+
+export interface AdminManualOfferSubmissionView {
+  id: string;
+  offer: { id: string; title: string; coin_reward: number };
+  user: { id: string; email: string; display_name: string };
+  proof_text: string;
+  status: ManualOfferSubmissionStatus;
+  review_reason: string | null;
+  reviewed_by_admin_id: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
 /* C5.10 Config */
 export interface ConfigView {
   key: string;

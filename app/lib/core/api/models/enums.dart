@@ -79,6 +79,20 @@ enum GiftCardBrand {
     }
   }
 
+  /// Wire value (snake_case) — the inverse of [fromWire]. Used in brand routes.
+  String get wire {
+    switch (this) {
+      case GiftCardBrand.amazon:
+        return 'amazon';
+      case GiftCardBrand.flipkart:
+        return 'flipkart';
+      case GiftCardBrand.googlePlay:
+        return 'google_play';
+      case GiftCardBrand.unknown:
+        return 'unknown';
+    }
+  }
+
   String get label {
     switch (this) {
       case GiftCardBrand.amazon:

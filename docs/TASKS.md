@@ -194,3 +194,18 @@ Decisions needed: (a) privacy/T&C legal review (draft from Data & Security doc);
 - [ ] H0 Wallet history display: owner reports list looks incorrect — DATA verified correct (balance chain consistent); investigate labels/order/refresh once owner specifies.
 
 - [ ] H6 Rewards page redesign (owner 2026-07-25): current flat grid of all 9 cards is confusing. Two-level flow: (1) Rewards page shows one card per BRAND (Amazon, Flipkart, Google Play) with brand icon/logo + color; (2) tapping a brand opens that brand's available gift cards (denominations ₹50/₹100/₹250) with stock + coin cost + redeem; (3) banner ad at the bottom of the brand-detail page. Data (GET /api/gift-cards) is correct — pure app UI restructure. Brand logos: use branded color cards + placeholder icons (real brand logos to be supplied/sourced; avoid unlicensed copyrighted assets bundled).
+
+## Hosting & consolidation decisions (owner, 2026-07-25)
+- Free launch stack: Cloudflare Pages (admin+landing static) + Neon (Postgres) + Upstash (Redis) + Fly.io (backend). Watch-items: Upstash daily command cap (BullMQ/velocity heavy), Fly 256MB RAM, Neon 0.5GB (ledger grows). Fallback/real host: ~$5/mo Hetzner VPS running docker-compose (removes all limits). Move = .env change.
+- **Landing page merged INTO the admin project** (revises H3): one React app on Cloudflare Pages. Public landing at `/`; ALL admin routes move under `/admin/*` (`/admin/login`, `/admin/dashboard`, ...). Do this AFTER the running H5/H6 agent finishes (it is editing admin App.tsx now — avoid conflict). Update guards/redirects (RequireAuth -> /admin/login), nav links, and the login redirect target accordingly.
+
+## Hosting FINAL (owner confirmed, 2026-07-25)
+- Vercel & Render RULED OUT: Vercel Hobby bans commercial use + serverless can't run BullMQ workers; Render free Postgres self-deletes after 30 days + web service sleeps. Not viable for a money app.
+- Plan: free stack = STAGING/validation (Cloudflare Pages admin+landing / Neon Postgres / Upstash Redis / Fly.io backend). PRODUCTION v1 = ~$5/mo Hetzner VPS running docker-compose (no limits, commercial-OK, real persistent Postgres/Redis). Move between them = .env change.
+- Phase F deliverable: prep deploy configs for BOTH — (a) Fly.io fly.toml + Neon/Upstash env wiring + Cloudflare Pages build for the merged admin+landing; (b) Hetzner VPS docker-compose prod profile + deploy/runbook. Owner picks at deploy time.
+
+## Domain (owner has graduatedcoder.in on Hostinger, 2026-07-25)
+- Subdomains: cashraja.graduatedcoder.in -> landing (/) + admin (/admin); api.cashraja.graduatedcoder.in -> backend API. (Chose api.cashraja.* over cashrajabackend.* — cleaner nesting.)
+- Uses: public privacy-policy URL for Play Store listing (cashraja.graduatedcoder.in/privacy or landing section); production API_BASE_URL for the app (https://api.cashraja.graduatedcoder.in/api); offerwall postback base URL for v2 (e.g. CPX -> https://api.cashraja.graduatedcoder.in/api/webhooks/offerwall/cpx).
+- DNS wiring at deploy: VPS = A records -> VPS IP + Caddy/nginx + Let's Encrypt SSL; free stack = CNAME to Cloudflare Pages / Fly.io targets. Phase F outputs the exact records.
+- App release build must set --dart-define=API_BASE_URL=https://api.cashraja.graduatedcoder.in/api (replacing the localhost dev tunnel).

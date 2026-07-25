@@ -13,7 +13,10 @@ import '../../features/home/presentation/home_shell.dart';
 import '../../features/invite/presentation/invite_screen.dart';
 import '../../features/legal/legal_content.dart';
 import '../../features/legal/presentation/policy_screen.dart';
+import '../../features/rewards/presentation/rewards_brand_screen.dart';
 import '../../features/splash/splash_screen.dart';
+import '../../features/tasks/presentation/manual_offers_screen.dart';
+import '../api/models/enums.dart';
 
 abstract class Routes {
   static const String splash = '/splash';
@@ -24,6 +27,8 @@ abstract class Routes {
   static const String spin = '/spin';
   static const String invite = '/invite';
   static const String feedback = '/feedback';
+  static const String rewards = '/rewards';
+  static const String manualOffers = '/manual-offers';
   static const String privacyPolicy = '/legal/privacy';
   static const String terms = '/legal/terms';
   static const String about = '/legal/about';
@@ -100,6 +105,16 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
       GoRoute(
         path: Routes.feedback,
         builder: (_, _) => const FeedbackScreen(),
+      ),
+      GoRoute(
+        path: '${Routes.rewards}/brand/:brand',
+        builder: (_, GoRouterState state) => RewardsBrandScreen(
+          brand: GiftCardBrand.fromWire(state.pathParameters['brand']),
+        ),
+      ),
+      GoRoute(
+        path: Routes.manualOffers,
+        builder: (_, _) => const ManualOffersScreen(),
       ),
       GoRoute(
         path: Routes.privacyPolicy,

@@ -7,6 +7,7 @@ import 'package:cashraja/core/api/models/bonus.dart';
 import 'package:cashraja/core/api/models/feedback.dart';
 import 'package:cashraja/core/api/models/game.dart';
 import 'package:cashraja/core/api/models/gift_card.dart';
+import 'package:cashraja/core/api/models/manual_offer.dart';
 import 'package:cashraja/core/api/models/offer.dart';
 import 'package:cashraja/core/api/models/redemption.dart';
 import 'package:cashraja/core/api/models/referral.dart';
@@ -35,6 +36,9 @@ class FakeApiClient extends ApiClient {
     this.referralBreakdownData,
     this.myFeedbackData,
     this.onSubmitFeedback,
+    this.manualOffersData,
+    this.myManualOfferSubmissionsData,
+    this.onSubmitManualOfferProof,
     this.streakData,
     this.onClaimStreak,
     this.onStartRound,
@@ -67,6 +71,10 @@ class FakeApiClient extends ApiClient {
   final List<FeedbackEntry>? myFeedbackData;
   final FeedbackEntry Function(
       FeedbackType type, String subject, String message)? onSubmitFeedback;
+  final List<ManualOffer>? manualOffersData;
+  final List<ManualOfferSubmission>? myManualOfferSubmissionsData;
+  final ManualOfferSubmission Function(String offerId, String proofText)?
+      onSubmitManualOfferProof;
   final StreakState? streakData;
   final StreakClaimResult Function()? onClaimStreak;
   final GameRound Function(GameDifficulty difficulty)? onStartRound;
@@ -199,6 +207,35 @@ class FakeApiClient extends ApiClient {
       adminReply: null,
       createdAt: DateTime(2026, 7, 25),
       resolvedAt: null,
+    );
+  }
+
+  @override
+  Future<List<ManualOffer>> manualOffers() async =>
+      manualOffersData ?? <ManualOffer>[];
+
+  @override
+  Future<List<ManualOfferSubmission>> myManualOfferSubmissions() async =>
+      myManualOfferSubmissionsData ?? <ManualOfferSubmission>[];
+
+  @override
+  Future<ManualOfferSubmission> submitManualOfferProof(
+    String offerId,
+    String proofText,
+  ) async {
+    if (onSubmitManualOfferProof != null) {
+      return onSubmitManualOfferProof!(offerId, proofText);
+    }
+    return ManualOfferSubmission(
+      id: 'sub-1',
+      offerId: offerId,
+      offerTitle: 'Offer',
+      coinReward: 50,
+      proofText: proofText,
+      status: 'pending',
+      reviewReason: null,
+      createdAt: DateTime(2026, 7, 25),
+      reviewedAt: null,
     );
   }
 

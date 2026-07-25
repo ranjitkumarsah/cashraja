@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/raja_colors.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_background.dart';
 import '../legal_content.dart';
 
@@ -32,8 +31,6 @@ class PolicyScreen extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
             children: <Widget>[
-              const _DraftBanner(),
-              const SizedBox(height: 16),
               ..._render(context, content),
               const SizedBox(height: 24),
               const Text(
@@ -99,35 +96,6 @@ class PolicyScreen extends StatelessWidget {
       }
     }
     return widgets;
-  }
-}
-
-class _DraftBanner extends StatelessWidget {
-  const _DraftBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return const AppCard(
-      padding: EdgeInsets.all(14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Icon(Icons.info_outline_rounded,
-              color: RajaColors.amber, size: 20),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              LegalContent.draftNotice,
-              style: TextStyle(
-                color: RajaColors.textSecondary,
-                fontSize: 12.5,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

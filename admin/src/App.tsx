@@ -13,6 +13,7 @@ import { RedemptionsPage } from './features/redemptions/RedemptionsPage';
 import { FraudPage } from './features/fraud/FraudPage';
 import { FeedbackPage } from './features/feedback/FeedbackPage';
 import { OffersPage } from './features/offers/OffersPage';
+import { ManualOffersPage } from './features/manual-offers/ManualOffersPage';
 import { InventoryPage } from './features/inventory/InventoryPage';
 import { ConfigPage } from './features/config/ConfigPage';
 import { AdminsPage } from './features/admins/AdminsPage';
@@ -53,6 +54,7 @@ export function AppRoutes() {
           <Route path="redemptions" element={<RedemptionsPage />} />
           <Route path="fraud" element={<FraudPage />} />
           <Route path="feedback" element={<FeedbackPage />} />
+          <Route path="manual-offers" element={<ManualOffersPage />} />
 
           <Route element={<RequireRole role="super_admin" />}>
             <Route path="offers" element={<OffersPage />} />

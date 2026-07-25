@@ -23,6 +23,7 @@ import { GameModule } from './modules/game/game.module';
 import { GiftCardsModule } from './modules/gift-cards/gift-cards.module';
 import { HealthModule } from './modules/health/health.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
+import { ManualOffersModule } from './modules/manual-offers/manual-offers.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { OffersModule } from './modules/offers/offers.module';
 import { PostbacksModule } from './modules/postbacks/postbacks.module';
@@ -88,6 +89,7 @@ import { ProvidersModule } from './providers/providers.module';
     BonusModule,
     AdsModule,
     FeedbackModule,
+    ManualOffersModule,
     JobsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

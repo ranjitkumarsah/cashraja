@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../core/api/api_exception.dart';
+import '../../../core/api/models/enums.dart';
 import '../../../core/api/models/gift_card.dart';
 import '../../../core/api/models/redemption.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/raja_colors.dart';
-import '../../../core/theme/raja_theme.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/async_value_view.dart';
-import '../../../core/widgets/coin_glyph.dart';
 import '../../../core/widgets/gradient_background.dart';
-import '../../../core/widgets/primary_button.dart';
-import '../../wallet/presentation/wallet_controllers.dart';
+import 'brand_style.dart';
 import 'redemption_card.dart';
 import 'rewards_controllers.dart';
 
-/// Rewards hub: a gift-card store and the user's redemption history.
+/// Rewards hub: a gift-card store (two levels — brand grid → brand detail) and
+/// the user's redemption history.
 class RewardsScreen extends ConsumerWidget {
   const RewardsScreen({super.key});
 
@@ -52,49 +51,8 @@ class RewardsScreen extends ConsumerWidget {
   }
 }
 
+/// Level 1: one card per BRAND. Tapping opens that brand's denominations.
 class _StoreTab extends ConsumerWidget {
-  Future<void> _confirm(
-    BuildContext context,
-    WidgetRef ref,
-    GiftCard card,
-  ) async {
-    final int balance =
-        ref.read(walletControllerProvider).valueOrNull?.coinBalance ?? 0;
-    final bool affordable = balance >= card.coinCost;
-
-    final bool? go = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: RajaColors.surface,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => _ConfirmSheet(card: card, affordable: affordable),
-    );
-    if (go != true) return;
-
-    if (!context.mounted) return;
-    try {
-      final Redemption r = await ref
-          .read(redemptionsControllerProvider.notifier)
-          .redeem(card.id);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Redemption ${r.status.label.toLowerCase()} — track it under '
-            'My redemptions.',
-          ),
-        ),
-      );
-      DefaultTabController.of(context).animateTo(1);
-    } on ApiException catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<GiftCard>> cards =
@@ -119,198 +77,122 @@ class _StoreTab extends ConsumerWidget {
               ],
             );
           }
+          final List<_BrandGroup> brands = _groupByBrand(list);
           return GridView.builder(
             padding: const EdgeInsets.all(16),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 0.82,
+              childAspectRatio: 0.9,
             ),
-            itemCount: list.length,
-            itemBuilder: (_, int i) => _GiftCardTile(
-              card: list[i],
-              onTap: list[i].inStock ? () => _confirm(context, ref, list[i]) : null,
+            itemCount: brands.length,
+            itemBuilder: (_, int i) => _BrandTile(
+              group: brands[i],
+              onTap: () =>
+                  context.push('${Routes.rewards}/brand/${brands[i].brand.wire}'),
             ),
           );
         },
       ),
     );
   }
-}
 
-class _GiftCardTile extends StatelessWidget {
-  const _GiftCardTile({required this.card, required this.onTap});
-
-  final GiftCard card;
-
-  /// Null ⇒ out of stock: the tile is greyed and non-interactive.
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool outOfStock = !card.inStock;
-    final Widget tile = AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const Icon(Icons.card_giftcard_rounded,
-              color: RajaColors.gold, size: 28),
-          const Spacer(),
-          Text(
-            card.brand.label,
-            style: const TextStyle(color: RajaColors.textSecondary, fontSize: 13),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '₹${card.denomination}',
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: RajaColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: <Widget>[
-              const CoinGlyph(size: 16),
-              const SizedBox(width: 6),
-              Text(
-                '${card.coinCost}',
-                style: const TextStyle(
-                  color: RajaColors.gold,
-                  fontWeight: FontWeight.w800,
-                  fontFeatures: RajaTheme.tabularFigures,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            outOfStock ? 'Out of stock' : '${card.available} available',
-            style: TextStyle(
-              color: outOfStock ? RajaColors.rose : RajaColors.textMuted,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-    if (!outOfStock) return tile;
-    // Greyed + a corner badge for sold-out cards.
-    return Opacity(
-      opacity: 0.55,
-      child: Stack(
-        children: <Widget>[
-          tile,
-          Positioned(
-            top: 12,
-            right: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: RajaColors.surfaceHigh,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: RajaColors.border),
-              ),
-              child: const Text(
-                'Sold out',
-                style: TextStyle(
-                  color: RajaColors.textMuted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  /// Group the flat catalog into one entry per brand, in a stable brand order.
+  static List<_BrandGroup> _groupByBrand(List<GiftCard> cards) {
+    const List<GiftCardBrand> order = <GiftCardBrand>[
+      GiftCardBrand.amazon,
+      GiftCardBrand.flipkart,
+      GiftCardBrand.googlePlay,
+      GiftCardBrand.unknown,
+    ];
+    final Map<GiftCardBrand, List<GiftCard>> byBrand =
+        <GiftCardBrand, List<GiftCard>>{};
+    for (final GiftCard c in cards) {
+      byBrand.putIfAbsent(c.brand, () => <GiftCard>[]).add(c);
+    }
+    final List<_BrandGroup> groups = <_BrandGroup>[];
+    for (final GiftCardBrand b in order) {
+      final List<GiftCard> items = byBrand[b] ?? <GiftCard>[];
+      if (items.isEmpty) continue;
+      groups.add(_BrandGroup(brand: b, cards: items));
+    }
+    return groups;
   }
 }
 
-class _ConfirmSheet extends StatelessWidget {
-  const _ConfirmSheet({required this.card, required this.affordable});
+class _BrandGroup {
+  _BrandGroup({required this.brand, required this.cards});
 
-  final GiftCard card;
-  final bool affordable;
+  final GiftCardBrand brand;
+  final List<GiftCard> cards;
+
+  int get denominationCount => cards.length;
+  bool get anyInStock => cards.any((GiftCard c) => c.inStock);
+  int get minDenomination =>
+      cards.map((GiftCard c) => c.denomination).reduce((int a, int b) => a < b ? a : b);
+}
+
+class _BrandTile extends StatelessWidget {
+  const _BrandTile({required this.group, required this.onTap});
+
+  final _BrandGroup group;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: RajaColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Redeem ${card.brand.label} ₹${card.denomination}?',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            Row(
+    final BrandStyle style = BrandStyle.of(group.brand);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: style.gradient,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const CoinGlyph(size: 20),
-                const SizedBox(width: 8),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  // NOTE: generic gift-card icon by design — no copyrighted
+                  // brand logos are bundled (see BrandStyle).
+                  child: Icon(style.icon, color: style.onColor, size: 24),
+                ),
+                const Spacer(),
                 Text(
-                  '${card.coinCost} coins will be reserved now.',
-                  style: const TextStyle(color: RajaColors.textSecondary),
+                  style.label,
+                  style: TextStyle(
+                    color: style.onColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  group.anyInStock
+                      ? '${group.denominationCount} cards · from ₹${group.minDenomination}'
+                      : 'Out of stock',
+                  style: TextStyle(
+                    color: group.anyInStock
+                        ? style.onColor.withValues(alpha: 0.85)
+                        : style.accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            const Text(
-              'Coins are deducted immediately and refunded automatically if the '
-              'request is rejected.',
-              style: TextStyle(color: RajaColors.textMuted, fontSize: 13),
-            ),
-            if (!affordable) ...<Widget>[
-              const SizedBox(height: 14),
-              Row(
-                children: <Widget>[
-                  const Icon(Icons.error_outline_rounded,
-                      color: RajaColors.rose, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Not enough coins for this reward yet.',
-                      style: TextStyle(
-                        color: RajaColors.rose.withValues(alpha: 0.9),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 24),
-            PrimaryButton(
-              label: affordable ? 'Confirm redemption' : 'Not enough coins',
-              onPressed: affordable
-                  ? () => Navigator.of(context).pop(true)
-                  : null,
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel',
-                  style: TextStyle(color: RajaColors.textMuted)),
-            ),
-          ],
+          ),
         ),
       ),
     );

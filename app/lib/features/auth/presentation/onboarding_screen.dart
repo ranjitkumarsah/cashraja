@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_exception.dart';
-import '../../../core/config/app_config.dart';
 import '../../../core/theme/raja_colors.dart';
 import '../../../core/widgets/coin_glyph.dart';
 import '../../../core/widgets/gradient_background.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../../legal/legal_content.dart';
+import '../../legal/presentation/policy_screen.dart';
 import 'auth_controller.dart';
 
 /// First screen for signed-out users: brand, value props, and sign-in.
@@ -34,13 +35,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
-  Future<void> _dev() async {
-    setState(() => _busy = true);
-    try {
-      await ref.read(authControllerProvider.notifier).startDevSignIn();
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  void _openPolicy(String title, String content) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PolicyScreen(title: title, content: content),
+      ),
+    );
   }
 
   void _showError(String message) {
@@ -94,21 +94,55 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   loading: _busy,
                   onPressed: _busy ? null : _google,
                 ),
-                if (AppConfig.devLoginEnabled) ...<Widget>[
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: _busy ? null : _dev,
-                    child: const Text(
-                      'Dev sign-in (mock)',
-                      style: TextStyle(color: RajaColors.textMuted),
+                const SizedBox(height: 16),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: <Widget>[
+                    const Text(
+                      'By continuing you confirm you are 18+ and accept our ',
+                      style:
+                          TextStyle(color: RajaColors.textMuted, fontSize: 12),
                     ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                const Text(
-                  'By continuing you agree you are 18+ and accept our Terms.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: RajaColors.textMuted, fontSize: 12),
+                    GestureDetector(
+                      onTap: () =>
+                          _openPolicy('Terms & Conditions', LegalContent.terms),
+                      child: const Text(
+                        'Terms',
+                        style: TextStyle(
+                          color: RajaColors.gold,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.underline,
+                          decorationColor: RajaColors.gold,
+                        ),
+                      ),
+                    ),
+                    const Text(
+                      ' & ',
+                      style:
+                          TextStyle(color: RajaColors.textMuted, fontSize: 12),
+                    ),
+                    GestureDetector(
+                      onTap: () => _openPolicy(
+                          'Privacy Policy', LegalContent.privacyPolicy),
+                      child: const Text(
+                        'Privacy Policy',
+                        style: TextStyle(
+                          color: RajaColors.gold,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.underline,
+                          decorationColor: RajaColors.gold,
+                        ),
+                      ),
+                    ),
+                    const Text(
+                      '.',
+                      style:
+                          TextStyle(color: RajaColors.textMuted, fontSize: 12),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
               ],

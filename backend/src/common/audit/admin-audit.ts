@@ -38,6 +38,10 @@ export const AUDIT_ACTIONS = {
   FRAUD_FLAG_RESOLVED: 'fraud_flag_resolved',
   FEEDBACK_REPLIED: 'feedback_replied',
   FEEDBACK_RESOLVED: 'feedback_resolved',
+  MANUAL_OFFER_CREATED: 'manual_offer_created',
+  MANUAL_OFFER_UPDATED: 'manual_offer_updated',
+  MANUAL_OFFER_SUBMISSION_APPROVED: 'manual_offer_submission_approved',
+  MANUAL_OFFER_SUBMISSION_REJECTED: 'manual_offer_submission_rejected',
 } as const;
 
 /** Minimal shape of the tx client needed here — keeps fakes small in tests. */

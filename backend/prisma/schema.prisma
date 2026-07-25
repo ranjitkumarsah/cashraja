@@ -129,6 +129,12 @@ enum FeedbackStatus {
   resolved
 }
 
+enum ManualOfferSubmissionStatus {
+  pending
+  approved
+  rejected
+}
+
 // ─────────────────────── TRD tables (§2.1–2.10) ───────────────────────
 
 model User {
@@ -161,6 +167,7 @@ model User {
   notifications    Notification[]
   fcmTokens        FcmToken[]
   feedback         Feedback[]
+  manualOfferSubmissions ManualOfferSubmission[]
 
   @@index([deviceId])
   @@map("users")
@@ -354,6 +361,8 @@ model Admin {
   configUpdates       AppConfig[]
   resolvedFraudFlags  FraudFlag[]
   resolvedFeedback    Feedback[]
+  createdManualOffers ManualOffer[]
+  reviewedManualOfferSubmissions ManualOfferSubmission[]
 
   @@map("admins")
 }
@@ -584,4 +593,55 @@ model Feedback {
   @@index([userId, createdAt])
   @@index([status])
   @@map("feedback")
+}
+
+// ─────────────────── H5 — manual offers + text-proof review ───────────────────
+
+/**
+ * H5 — an admin-authored "manual offer": a task with plain-text instructions
+ * that a user completes off-platform and proves by submitting free text. Super
+ * admins create/edit; reviewers approve or reject the resulting submissions.
+ */
+model ManualOffer {
+  id             String   @id @default(uuid()) @db.Uuid
+  title          String   @map("title")
+  description    String   @map("description")
+  instructions   String   @map("instructions")
+  coinReward     Int      @map("coin_reward")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdByAdminId String @map("created_by_admin_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  createdByAdmin Admin                  @relation(fields: [createdByAdminId], references: [id])
+  submissions    ManualOfferSubmission[]
+
+  @@index([isActive])
+  @@map("manual_offers")
+}
+
+/**
+ * A user's text-proof submission for a manual offer. A user may hold at most one
+ * non-rejected (pending or approved) submission per offer — enforced in the
+ * service. Approval credits the offer's coin_reward via LedgerService.
+ */
+model ManualOfferSubmission {
+  id                String                      @id @default(uuid()) @db.Uuid
+  offerId           String                      @map("offer_id") @db.Uuid
+  userId            String                      @map("user_id") @db.Uuid
+  proofText         String                      @map("proof_text")
+  status            ManualOfferSubmissionStatus @default(pending) @map("status")
+  reviewReason      String?                     @map("review_reason")
+  reviewedByAdminId String?                     @map("reviewed_by_admin_id") @db.Uuid
+  createdAt         DateTime                    @default(now()) @map("created_at")
+  reviewedAt        DateTime?                   @map("reviewed_at")
+
+  offer           ManualOffer @relation(fields: [offerId], references: [id])
+  user            User        @relation(fields: [userId], references: [id])
+  reviewedByAdmin Admin?      @relation(fields: [reviewedByAdminId], references: [id])
+
+  @@index([offerId])
+  @@index([userId])
+  @@index([status])
+  @@map("manual_offer_submissions")
 }

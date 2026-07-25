@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/harness.dart';
 
 void main() {
-  testWidgets('Privacy Policy screen renders content + draft notice',
+  testWidgets('Privacy Policy screen renders content (no draft banner)',
       (tester) async {
     await pumpApp(
       tester,
@@ -18,16 +18,18 @@ void main() {
 
     // Title in the app bar.
     expect(find.text('Privacy Policy'), findsWidgets);
-    // A known heading from the drafted content.
+    // A known heading from the finalised content.
     expect(find.text('Data we collect'), findsOneWidget);
-    // The draft-review banner is shown.
-    expect(find.textContaining('Draft pending legal review'), findsOneWidget);
+    // The draft-review banner must NOT be present (content is published).
+    expect(find.textContaining('Draft pending legal review'), findsNothing);
   });
 
-  testWidgets('policy drafts are non-empty for all three documents',
+  testWidgets('policies are non-empty and use the real contact email',
       (tester) async {
     expect(LegalContent.privacyPolicy.trim().isNotEmpty, isTrue);
     expect(LegalContent.terms.trim().isNotEmpty, isTrue);
     expect(LegalContent.aboutUs.trim().isNotEmpty, isTrue);
+    expect(LegalContent.contactEmail, 'support.cashraja@gmail.com');
+    expect(LegalContent.privacyPolicy.contains(LegalContent.contactEmail), isTrue);
   });
 }
