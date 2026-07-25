@@ -35,6 +35,37 @@ class BonusController extends FamilyAsyncNotifier<BonusState, BonusKind> {
     }
     return result;
   }
+
+  /// Step 1 (roll): ask the server to roll + reserve the prize (no credit yet)
+  /// for this kind. Reflects the consumed attempt locally so the UI updates
+  /// immediately. Shared by scratch and spin.
+  Future<BonusRollResult> roll() async {
+    final BonusRollResult result =
+        await ref.read(apiClientProvider).rollBonus(arg);
+    final BonusState? current = state.valueOrNull;
+    if (current != null) {
+      state = AsyncData<BonusState>(
+        current.copyWith(attemptsRemaining: result.attemptsRemaining),
+      );
+    }
+    return result;
+  }
+
+  /// Step 2 (claim): credit the reserved prize after the ad; refresh the wallet.
+  Future<BonusPlayResult> claim(String reservationId) async {
+    final BonusPlayResult result =
+        await ref.read(apiClientProvider).claimBonus(arg, reservationId);
+    final BonusState? current = state.valueOrNull;
+    if (current != null) {
+      state = AsyncData<BonusState>(
+        current.copyWith(attemptsRemaining: result.attemptsRemaining),
+      );
+    }
+    if (result.isWin) {
+      await ref.read(walletControllerProvider.notifier).refresh();
+    }
+    return result;
+  }
 }
 
 final bonusControllerProvider =

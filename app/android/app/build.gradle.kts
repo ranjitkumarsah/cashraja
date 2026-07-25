@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -11,16 +13,18 @@ plugins {
 // Gradle, so a release build can inject the real AdMob app id via
 // --dart-define=ADMOB_APP_ID=... The AdMob *App ID* must live in the manifest
 // (native, read by MobileAds at init) — it cannot come from a runtime define.
-val dartDefines: Map<String, String> =
-    (project.findProperty("dart-defines") as? String)
-        ?.split(",")
-        ?.mapNotNull { token ->
-            val decoded = String(java.util.Base64.getDecoder().decode(token))
+val dartDefines: Map<String, String> = run {
+    val raw = project.findProperty("dart-defines") as? String ?: ""
+    if (raw.isEmpty()) {
+        emptyMap()
+    } else {
+        raw.split(",").mapNotNull { token ->
+            val decoded = String(Base64.getDecoder().decode(token))
             val idx = decoded.indexOf('=')
-            if (idx < 0) null else decoded.substring(0, idx) to decoded.substring(idx + 1)
-        }
-        ?.toMap()
-        ?: emptyMap()
+            if (idx < 0) null else Pair(decoded.substring(0, idx), decoded.substring(idx + 1))
+        }.toMap()
+    }
+}
 
 // Dev default is Google's official SAMPLE AdMob app id (safe, no real revenue).
 val admobAppId: String =

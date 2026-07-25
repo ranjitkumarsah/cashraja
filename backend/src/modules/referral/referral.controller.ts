@@ -1,7 +1,12 @@
 import { Controller, Get, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthenticatedUser, CurrentUser, JwtAuthGuard } from '../../common/auth';
-import { MyCodeView, ReferralService, ReferralStatsView } from './referral.service';
+import {
+  MyCodeView,
+  ReferralBreakdownView,
+  ReferralService,
+  ReferralStatsView,
+} from './referral.service';
 
 /** D4.1 — referral code + stats, JWT-guarded. */
 @ApiTags('referral')
@@ -18,6 +23,11 @@ export class ReferralController {
   @Get('stats')
   stats(@CurrentUser() user: AuthenticatedUser | undefined): Promise<ReferralStatsView> {
     return this.referral.stats(requireUser(user).id);
+  }
+
+  @Get('breakdown')
+  breakdown(@CurrentUser() user: AuthenticatedUser | undefined): Promise<ReferralBreakdownView> {
+    return this.referral.breakdown(requireUser(user).id);
   }
 }
 

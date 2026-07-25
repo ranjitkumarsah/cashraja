@@ -178,3 +178,19 @@ Decision: **age gate stays 18+** (India DPDP Act minors = under-18 + parental co
 - [ ] G6 Real scratch-to-reveal gesture; on reveal → claim popup → watch ad to credit (3e)
 - [ ] G7 Watch-ads: max 10/day + ~1min cooldown between watch and claim (3g); backend cap already exists, add cooldown
 - Note: dev uses client-gated ad-watch before the existing credit call (server still authoritative + daily caps); production hardening = ad-network SSV (already built for offer/ad webhooks).
+
+---
+
+## H — Launch Readiness & Content (owner feedback, 2026-07-25)
+
+- [ ] H1 Profile page: Terms & Conditions + Privacy Policy links, proper Settings section (Play Store requires an accessible privacy policy). Policy content drafted from docs/cash-mafia-clone-data-security.md; owner/legal review before publish.
+- [ ] H2 Referral page: list referred users (names) + their earnings + commission earned by referrer + the referral cap/window. Needs backend referral breakdown endpoint + app UI.
+- [ ] H3 Marketing landing page (web, new deliverable): premium design, features, live stats (total users, daily users, rewards paid), Play Store link (when live), Privacy Policy, T&C, About Us (no physical address), FAQs. Needs a public read-only stats endpoint + hosting.
+- [ ] H4 Feedback/complaint system: in-app submit form (users) + admin queue to view/resolve/reply. Backend model + endpoints + app form + admin screen.
+
+Decisions needed: (a) privacy/T&C legal review (draft from Data & Security doc); (b) landing-page + policy hosting (ties to the still-open production-host decision U4); (c) which "stats" to expose publicly (aggregate only, no PII).
+
+- [ ] H5 Manual offers + proof review (owner 2026-07-25): super-admin creates manual offers/tasks (title, description, coin reward, instructions); users view them, complete, and submit **text proof**; admin reviews submissions and approves (credit via LedgerService) or rejects (with reason). Backend model (ManualOffer + ManualOfferSubmission) + endpoints; admin CRUD + review queue; app offer list + proof-submit form + status. Credits go through the ledger (source_type offer/admin_adjustment) with idempotency.
+- [ ] H0 Wallet history display: owner reports list looks incorrect — DATA verified correct (balance chain consistent); investigate labels/order/refresh once owner specifies.
+
+- [ ] H6 Rewards page redesign (owner 2026-07-25): current flat grid of all 9 cards is confusing. Two-level flow: (1) Rewards page shows one card per BRAND (Amazon, Flipkart, Google Play) with brand icon/logo + color; (2) tapping a brand opens that brand's available gift cards (denominations ₹50/₹100/₹250) with stock + coin cost + redeem; (3) banner ad at the bottom of the brand-detail page. Data (GET /api/gift-cards) is correct — pure app UI restructure. Brand logos: use branded color cards + placeholder icons (real brand logos to be supplied/sourced; avoid unlicensed copyrighted assets bundled).

@@ -7,9 +7,12 @@ import '../../features/auth/presentation/attestation_screen.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/onboarding_screen.dart';
 import '../../features/bonus/presentation/bonus_screen.dart';
+import '../../features/feedback/presentation/feedback_screen.dart';
 import '../../features/game/presentation/game_screen.dart';
 import '../../features/home/presentation/home_shell.dart';
 import '../../features/invite/presentation/invite_screen.dart';
+import '../../features/legal/legal_content.dart';
+import '../../features/legal/presentation/policy_screen.dart';
 import '../../features/splash/splash_screen.dart';
 
 abstract class Routes {
@@ -20,6 +23,10 @@ abstract class Routes {
   static const String game = '/game';
   static const String spin = '/spin';
   static const String invite = '/invite';
+  static const String feedback = '/feedback';
+  static const String privacyPolicy = '/legal/privacy';
+  static const String terms = '/legal/terms';
+  static const String about = '/legal/about';
 }
 
 /// Bridges the Riverpod auth state into a [Listenable] for go_router refresh.
@@ -89,6 +96,31 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
       GoRoute(
         path: Routes.invite,
         builder: (_, _) => const InviteScreen(),
+      ),
+      GoRoute(
+        path: Routes.feedback,
+        builder: (_, _) => const FeedbackScreen(),
+      ),
+      GoRoute(
+        path: Routes.privacyPolicy,
+        builder: (_, _) => const PolicyScreen(
+          title: 'Privacy Policy',
+          content: LegalContent.privacyPolicy,
+        ),
+      ),
+      GoRoute(
+        path: Routes.terms,
+        builder: (_, _) => const PolicyScreen(
+          title: 'Terms & Conditions',
+          content: LegalContent.terms,
+        ),
+      ),
+      GoRoute(
+        path: Routes.about,
+        builder: (_, _) => const PolicyScreen(
+          title: 'About Us',
+          content: LegalContent.aboutUs,
+        ),
       ),
     ],
   );

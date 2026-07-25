@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:cashraja/core/api/api_client.dart';
 import 'package:cashraja/core/api/models/ad_reward.dart';
 import 'package:cashraja/core/api/models/auth_tokens.dart';
 import 'package:cashraja/core/api/models/bonus.dart';
+import 'package:cashraja/core/api/models/feedback.dart';
 import 'package:cashraja/core/api/models/game.dart';
 import 'package:cashraja/core/api/models/gift_card.dart';
 import 'package:cashraja/core/api/models/offer.dart';
@@ -29,12 +32,17 @@ class FakeApiClient extends ApiClient {
     this.onRedeem,
     this.referralCodeData,
     this.referralStatsData,
+    this.referralBreakdownData,
+    this.myFeedbackData,
+    this.onSubmitFeedback,
     this.streakData,
     this.onClaimStreak,
     this.onStartRound,
     this.onCompleteRound,
     this.bonusStateData,
     this.onPlayBonus,
+    this.onRollBonus,
+    this.onClaimBonus,
     this.adRewardStateData,
     this.onClaimAdReward,
   }) : super(
@@ -55,12 +63,19 @@ class FakeApiClient extends ApiClient {
   final Redemption Function(String giftCardId)? onRedeem;
   final ReferralCode? referralCodeData;
   final ReferralStats? referralStatsData;
+  final ReferralBreakdown? referralBreakdownData;
+  final List<FeedbackEntry>? myFeedbackData;
+  final FeedbackEntry Function(
+      FeedbackType type, String subject, String message)? onSubmitFeedback;
   final StreakState? streakData;
   final StreakClaimResult Function()? onClaimStreak;
   final GameRound Function(GameDifficulty difficulty)? onStartRound;
   final RoundResult Function(String roundId)? onCompleteRound;
   final BonusState Function(BonusKind kind)? bonusStateData;
   final BonusPlayResult Function(BonusKind kind)? onPlayBonus;
+  final BonusRollResult Function(BonusKind kind)? onRollBonus;
+  final BonusPlayResult Function(BonusKind kind, String reservationId)?
+      onClaimBonus;
   final AdRewardState? adRewardStateData;
   final AdRewardResult Function()? onClaimAdReward;
 
@@ -151,6 +166,43 @@ class FakeApiClient extends ApiClient {
       );
 
   @override
+  Future<ReferralBreakdown> referralBreakdown() async =>
+      referralBreakdownData ??
+      const ReferralBreakdown(
+        referred: <ReferredUser>[],
+        referredCount: 0,
+        activeCount: 0,
+        totalCommission: 0,
+        bonusPercent: 10,
+        windowDays: 30,
+      );
+
+  @override
+  Future<List<FeedbackEntry>> myFeedback() async =>
+      myFeedbackData ?? <FeedbackEntry>[];
+
+  @override
+  Future<FeedbackEntry> submitFeedback({
+    required FeedbackType type,
+    required String subject,
+    required String message,
+  }) async {
+    if (onSubmitFeedback != null) {
+      return onSubmitFeedback!(type, subject, message);
+    }
+    return FeedbackEntry(
+      id: 'fb-1',
+      type: type,
+      subject: subject,
+      message: message,
+      status: 'open',
+      adminReply: null,
+      createdAt: DateTime(2026, 7, 25),
+      resolvedAt: null,
+    );
+  }
+
+  @override
   Future<StreakState> streak() async =>
       streakData ??
       const StreakState(
@@ -201,12 +253,33 @@ class FakeApiClient extends ApiClient {
       attemptsRemaining: 1,
       attemptsPerDay: 1,
       unlocked: true,
+      prizes: const <int>[0, 5, 25, 100],
     );
   }
 
   @override
   Future<BonusPlayResult> playBonus(BonusKind kind) async {
     if (onPlayBonus != null) return onPlayBonus!(kind);
+    return const BonusPlayResult(
+      prizeCoins: 25,
+      newBalance: 125,
+      attemptsRemaining: 0,
+    );
+  }
+
+  @override
+  Future<BonusRollResult> rollBonus(BonusKind kind) async {
+    if (onRollBonus != null) return onRollBonus!(kind);
+    return const BonusRollResult(
+      reservationId: 'res-1',
+      prizeCoins: 25,
+      attemptsRemaining: 0,
+    );
+  }
+
+  @override
+  Future<BonusPlayResult> claimBonus(BonusKind kind, String reservationId) async {
+    if (onClaimBonus != null) return onClaimBonus!(kind, reservationId);
     return const BonusPlayResult(
       prizeCoins: 25,
       newBalance: 125,
@@ -250,6 +323,21 @@ class FakeRewardedAdService implements RewardedAdService {
 
   @override
   Future<AdResult> show() async => result;
+}
+
+/// A [RewardedAdService] whose [show] stays pending until [complete] is called —
+/// lets tests observe the in-flight loading state (spinner + disabled controls)
+/// before the ad resolves.
+class DeferredRewardedAdService implements RewardedAdService {
+  final Completer<AdResult> _completer = Completer<AdResult>();
+
+  @override
+  Future<void> load() async {}
+
+  @override
+  Future<AdResult> show() => _completer.future;
+
+  void complete(AdResult result) => _completer.complete(result);
 }
 
 /// Device id that never touches secure storage.

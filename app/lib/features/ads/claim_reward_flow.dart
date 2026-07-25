@@ -34,10 +34,15 @@ Future<ClaimOutcome> showAdGatedClaim(
   String claimLabel = 'Watch ad & claim',
   IconData icon = Icons.celebration_rounded,
 }) async {
-  final bool? claim = await showDialog<bool>(
+  // The dialog itself drives the rewarded ad and stays on-screen (with a
+  // loader + modal barrier) for the whole load/show, so the surface underneath
+  // can never be tapped and Claim can't be double-fired. It resolves directly
+  // to the [ClaimOutcome] the caller acts on.
+  final ClaimOutcome? outcome = await showDialog<ClaimOutcome>(
     context: context,
     barrierDismissible: false,
     builder: (_) => _ClaimDialog(
+      ads: ref.read(rewardedAdServiceProvider),
       coins: coins,
       title: title,
       subtitle: subtitle,
@@ -45,17 +50,12 @@ Future<ClaimOutcome> showAdGatedClaim(
       icon: icon,
     ),
   );
-  if (claim != true) return ClaimOutcome.closed;
-
-  final RewardedAdService ads = ref.read(rewardedAdServiceProvider);
-  final AdResult result = await ads.show();
-  return result == AdResult.watched
-      ? ClaimOutcome.claimed
-      : ClaimOutcome.adIncomplete;
+  return outcome ?? ClaimOutcome.closed;
 }
 
-class _ClaimDialog extends StatelessWidget {
+class _ClaimDialog extends StatefulWidget {
   const _ClaimDialog({
+    required this.ads,
     required this.coins,
     required this.title,
     required this.subtitle,
@@ -63,6 +63,7 @@ class _ClaimDialog extends StatelessWidget {
     required this.icon,
   });
 
+  final RewardedAdService ads;
   final int? coins;
   final String title;
   final String subtitle;
@@ -70,49 +71,78 @@ class _ClaimDialog extends StatelessWidget {
   final IconData icon;
 
   @override
+  State<_ClaimDialog> createState() => _ClaimDialogState();
+}
+
+class _ClaimDialogState extends State<_ClaimDialog> {
+  bool _loading = false;
+
+  Future<void> _onClaim() async {
+    if (_loading) return;
+    // Show the spinner + freeze every control while the ad loads/plays.
+    setState(() => _loading = true);
+    final AdResult result = await widget.ads.show();
+    if (!mounted) return;
+    Navigator.of(context).pop(
+      result == AdResult.watched
+          ? ClaimOutcome.claimed
+          : ClaimOutcome.adIncomplete,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: RajaColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Container(
-              width: 72,
-              height: 72,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RajaColors.goldGradient,
+    // Block the Android back gesture while the ad is in flight so the barrier
+    // can't be dismissed underneath a loading claim.
+    return PopScope(
+      canPop: !_loading,
+      child: Dialog(
+        backgroundColor: RajaColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                width: 72,
+                height: 72,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RajaColors.goldGradient,
+                ),
+                child:
+                    Icon(widget.icon, size: 38, color: const Color(0xFF1A1300)),
               ),
-              child: Icon(icon, size: 38, color: const Color(0xFF1A1300)),
-            ),
-            const SizedBox(height: 18),
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            if (coins != null) ...<Widget>[
-              CoinBalance(amount: coins!, fontSize: 40, glyphSize: 32),
+              const SizedBox(height: 18),
+              Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 12),
+              if (widget.coins != null) ...<Widget>[
+                CoinBalance(amount: widget.coins!, fontSize: 40, glyphSize: 32),
+                const SizedBox(height: 12),
+              ],
+              Text(
+                _loading ? 'Loading your ad…' : widget.subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: RajaColors.textSecondary, height: 1.4),
+              ),
+              const SizedBox(height: 24),
+              PrimaryButton(
+                label: widget.claimLabel,
+                icon: Icons.smart_display_rounded,
+                loading: _loading,
+                onPressed: _loading ? null : _onClaim,
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed:
+                    _loading ? null : () => Navigator.of(context).pop(ClaimOutcome.closed),
+                child: const Text('Close',
+                    style: TextStyle(color: RajaColors.textMuted)),
+              ),
             ],
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: RajaColors.textSecondary, height: 1.4),
-            ),
-            const SizedBox(height: 24),
-            PrimaryButton(
-              label: claimLabel,
-              icon: Icons.smart_display_rounded,
-              onPressed: () => Navigator.of(context).pop(true),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Close',
-                  style: TextStyle(color: RajaColors.textMuted)),
-            ),
-          ],
+          ),
         ),
       ),
     );

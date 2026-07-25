@@ -326,6 +326,20 @@
         ]
       }
     },
+    "/api/referral/breakdown": {
+      "get": {
+        "operationId": "ReferralController_breakdown",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "referral"
+        ]
+      }
+    },
     "/api/offers": {
       "get": {
         "operationId": "OffersController_list",
@@ -1160,6 +1174,62 @@
         ]
       }
     },
+    "/api/bonus/{type}/roll": {
+      "post": {
+        "operationId": "BonusController_roll",
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "bonus"
+        ]
+      }
+    },
+    "/api/bonus/{type}/claim": {
+      "post": {
+        "operationId": "BonusController_claim",
+        "parameters": [
+          {
+            "name": "type",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimSpinDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "bonus"
+        ]
+      }
+    },
     "/api/bonus/{type}": {
       "get": {
         "operationId": "BonusController_state",
@@ -1203,6 +1273,142 @@
         },
         "tags": [
           "bonus"
+        ]
+      }
+    },
+    "/api/ads/reward-state": {
+      "get": {
+        "operationId": "AdRewardController_state",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ads"
+        ]
+      }
+    },
+    "/api/ads/reward": {
+      "post": {
+        "operationId": "AdRewardController_reward",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ads"
+        ]
+      }
+    },
+    "/api/feedback": {
+      "post": {
+        "operationId": "FeedbackController_submit",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeedbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/feedback/mine": {
+      "get": {
+        "operationId": "FeedbackController_mine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/admin/feedback": {
+      "get": {
+        "operationId": "AdminFeedbackController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/feedback/{id}/reply": {
+      "post": {
+        "operationId": "AdminFeedbackController_reply",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplyFeedbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/feedback/{id}/resolve": {
+      "post": {
+        "operationId": "AdminFeedbackController_resolve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
         ]
       }
     }
@@ -1305,6 +1511,18 @@
         "properties": {}
       },
       "RoundCompleteDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ClaimSpinDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateFeedbackDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ReplyFeedbackDto": {
         "type": "object",
         "properties": {}
       }

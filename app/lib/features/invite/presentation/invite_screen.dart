@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/models/referral.dart';
 import '../../../core/theme/raja_colors.dart';
 import '../../../core/theme/raja_theme.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/async_value_view.dart';
+import '../../../core/widgets/coin_balance.dart';
 import '../../../core/widgets/coin_glyph.dart';
 import '../../../core/widgets/gradient_background.dart';
 import '../../../core/widgets/primary_button.dart';
@@ -51,6 +53,19 @@ class InviteScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   _StatsGrid(stats: d.stats),
+                  const SizedBox(height: 16),
+                  _RewardRuleBanner(breakdown: d.breakdown),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Referred friends',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: RajaColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _ReferredList(breakdown: d.breakdown),
                   const SizedBox(height: 24),
                   const _HowItWorks(),
                 ],
@@ -259,6 +274,233 @@ class _StatTile extends StatelessWidget {
             style: const TextStyle(color: RajaColors.textMuted, fontSize: 12),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shows the current bonus rule: percent + window length (from the breakdown
+/// config snapshot).
+class _RewardRuleBanner extends StatelessWidget {
+  const _RewardRuleBanner({required this.breakdown});
+
+  final ReferralBreakdown breakdown;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: <Widget>[
+          const Icon(Icons.card_giftcard_rounded,
+              color: RajaColors.gold, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                style: const TextStyle(
+                  color: RajaColors.textSecondary,
+                  height: 1.4,
+                  fontSize: 13,
+                ),
+                children: <InlineSpan>[
+                  const TextSpan(text: 'You earn '),
+                  TextSpan(
+                    text: '${breakdown.bonusPercent}%',
+                    style: const TextStyle(
+                      color: RajaColors.gold,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const TextSpan(text: ' of what each friend earns for '),
+                  TextSpan(
+                    text: '${breakdown.windowDays} days',
+                    style: const TextStyle(
+                      color: RajaColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const TextSpan(text: ' after they join.'),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The list of referred users with join date, their earnings, and the
+/// commission the caller earned from each.
+class _ReferredList extends StatelessWidget {
+  const _ReferredList({required this.breakdown});
+
+  final ReferralBreakdown breakdown;
+
+  @override
+  Widget build(BuildContext context) {
+    if (breakdown.referred.isEmpty) {
+      return const AppCard(
+        child: Row(
+          children: <Widget>[
+            Icon(Icons.person_add_alt_1_rounded, color: RajaColors.textMuted),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'No referrals yet. Share your code to start earning bonuses.',
+                style: TextStyle(color: RajaColors.textSecondary),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Column(
+      children: <Widget>[
+        for (final ReferredUser u in breakdown.referred) ...<Widget>[
+          _ReferredCard(user: u),
+          const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+}
+
+class _ReferredCard extends StatelessWidget {
+  const _ReferredCard({required this.user});
+
+  final ReferredUser user;
+
+  @override
+  Widget build(BuildContext context) {
+    final String initial =
+        user.displayName.isNotEmpty ? user.displayName[0].toUpperCase() : '?';
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: RajaColors.surfaceHigh,
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: RajaColors.gold,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      user.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: RajaColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Joined ${Formatters.date(user.joinedAt)}',
+                      style: const TextStyle(
+                        color: RajaColors.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _WindowChip(active: user.windowActive),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _MiniStat(
+                  label: 'They earned',
+                  amount: user.theirEarningsTotal,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _MiniStat(
+                  label: 'You earned',
+                  amount: user.commissionEarnedByMe,
+                  highlight: true,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({
+    required this.label,
+    required this.amount,
+    this.highlight = false,
+  });
+
+  final String label;
+  final int amount;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          label,
+          style: const TextStyle(color: RajaColors.textMuted, fontSize: 11),
+        ),
+        const SizedBox(height: 4),
+        CoinBalance(
+          amount: amount,
+          animate: false,
+          fontSize: 17,
+          glyphSize: 16,
+          color: highlight ? RajaColors.gold : RajaColors.textPrimary,
+        ),
+      ],
+    );
+  }
+}
+
+class _WindowChip extends StatelessWidget {
+  const _WindowChip({required this.active});
+
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = active ? RajaColors.emerald : RajaColors.textMuted;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        active ? 'Active' : 'Expired',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

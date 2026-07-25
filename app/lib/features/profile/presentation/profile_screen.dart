@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/api/models/user.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/raja_colors.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/async_value_view.dart';
@@ -57,6 +59,38 @@ class ProfileScreen extends ConsumerWidget {
                           value: me.country!,
                         ),
                       ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const _SectionLabel('Support & legal'),
+                AppCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: <Widget>[
+                      _Action(
+                        icon: Icons.chat_bubble_outline_rounded,
+                        label: 'Send feedback',
+                        onTap: () => context.push(Routes.feedback),
+                      ),
+                      const Divider(height: 1),
+                      _Action(
+                        icon: Icons.description_outlined,
+                        label: 'Terms & Conditions',
+                        onTap: () => context.push(Routes.terms),
+                      ),
+                      const Divider(height: 1),
+                      _Action(
+                        icon: Icons.privacy_tip_outlined,
+                        label: 'Privacy Policy',
+                        onTap: () => context.push(Routes.privacyPolicy),
+                      ),
+                      const Divider(height: 1),
+                      _Action(
+                        icon: Icons.info_outline_rounded,
+                        label: 'About Us',
+                        onTap: () => context.push(Routes.about),
+                      ),
                     ],
                   ),
                 ),

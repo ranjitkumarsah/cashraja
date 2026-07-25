@@ -18,8 +18,9 @@ const STATUS_VARIANT: Record<string, Variant> = {
   // inventory
   unused: 'success',
   reserved: 'gold',
-  // fraud
+  // fraud + feedback
   open: 'gold',
+  in_review: 'indigo',
   resolved: 'success',
   // admins
   disabled: 'danger',

@@ -133,21 +133,18 @@ async function main(): Promise<void> {
       ],
     },
   });
+  // Spin prizes: every spin awards between 1 and 10 coins (owner spec).
+  const spinTable = [
+    { coins: 1, weight: 40 },
+    { coins: 2, weight: 30 },
+    { coins: 3, weight: 15 },
+    { coins: 5, weight: 10 },
+    { coins: 10, weight: 5 },
+  ];
   await prisma.bonusConfig.upsert({
     where: { kind_version: { kind: 'spin', version: 1 } },
-    update: {},
-    create: {
-      kind: 'spin',
-      version: 1,
-      attemptsPerDay: 1,
-      weightedTable: [
-        { coins: 0, weight: 30 },
-        { coins: 2, weight: 35 },
-        { coins: 5, weight: 20 },
-        { coins: 20, weight: 10 },
-        { coins: 100, weight: 5 },
-      ],
-    },
+    update: { weightedTable: spinTable, attemptsPerDay: 1 },
+    create: { kind: 'spin', version: 1, attemptsPerDay: 1, weightedTable: spinTable },
   });
   console.log('Seeded bonus_config (scratch v1, spin v1)');
 

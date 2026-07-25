@@ -18,6 +18,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { AdminAuthModule } from './modules/admin-auth/admin-auth.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BonusModule } from './modules/bonus/bonus.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
 import { GameModule } from './modules/game/game.module';
 import { GiftCardsModule } from './modules/gift-cards/gift-cards.module';
 import { HealthModule } from './modules/health/health.module';
@@ -86,6 +87,7 @@ import { ProvidersModule } from './providers/providers.module';
     StreakModule,
     BonusModule,
     AdsModule,
+    FeedbackModule,
     JobsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

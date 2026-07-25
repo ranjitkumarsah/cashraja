@@ -118,6 +118,17 @@ enum FraudFlagStatus {
   resolved
 }
 
+enum FeedbackType {
+  feedback
+  complaint
+}
+
+enum FeedbackStatus {
+  open
+  in_review
+  resolved
+}
+
 // ─────────────────────── TRD tables (§2.1–2.10) ───────────────────────
 
 model User {
@@ -149,6 +160,7 @@ model User {
   bonusAttempts    BonusAttempt[]
   notifications    Notification[]
   fcmTokens        FcmToken[]
+  feedback         Feedback[]
 
   @@index([deviceId])
   @@map("users")
@@ -341,6 +353,7 @@ model Admin {
   uploadedInventory   GiftCardInventory[]
   configUpdates       AppConfig[]
   resolvedFraudFlags  FraudFlag[]
+  resolvedFeedback    Feedback[]
 
   @@map("admins")
 }
@@ -544,4 +557,31 @@ model MetricsSnapshot {
 
   @@index([capturedAt])
   @@map("metrics_snapshots")
+}
+
+// ─────────────────── H4 — user feedback / complaints ───────────────────
+
+/**
+ * User-submitted feedback and complaints (H4). Users create rows and read their
+ * own; admins (reviewer or super-admin) triage the queue, reply, and resolve.
+ * Every admin mutation is mirrored in admin_audit_log.
+ */
+model Feedback {
+  id                String         @id @default(uuid()) @db.Uuid
+  userId            String         @map("user_id") @db.Uuid
+  type              FeedbackType   @map("type")
+  subject           String         @map("subject")
+  message           String         @map("message")
+  status            FeedbackStatus @default(open) @map("status")
+  adminReply        String?        @map("admin_reply")
+  resolvedByAdminId String?        @map("resolved_by_admin_id") @db.Uuid
+  createdAt         DateTime       @default(now()) @map("created_at")
+  resolvedAt        DateTime?      @map("resolved_at")
+
+  user            User   @relation(fields: [userId], references: [id])
+  resolvedByAdmin Admin? @relation(fields: [resolvedByAdminId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("feedback")
 }

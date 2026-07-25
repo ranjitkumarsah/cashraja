@@ -46,6 +46,10 @@ class FakeBonusPrisma {
       this.attempts.push(row);
       return Promise.resolve({ ...row });
     },
+    findUnique: (args: { where: { id: string } }) => {
+      const row = this.attempts.find((a) => a.id === args.where.id);
+      return Promise.resolve(row ? { ...row } : null);
+    },
     count: (args: {
       where: { userId: string; kind: BonusKind; createdAt: { gte: Date } };
     }) =>
@@ -139,6 +143,84 @@ describe('BonusService', () => {
       attempts_per_day: 3,
       attempts_remaining: 2,
       unlocked: true,
+    });
+  });
+
+  it('getState exposes the distinct prize set (for the spin wheel segments)', async () => {
+    const service = buildService(prisma, ledger, referral, () => 0);
+    const state = await service.getState(userId, BonusKind.scratch);
+    // TABLE = 0,2,5,20,100 (all distinct) in table order.
+    expect(state.prizes).toEqual([0, 2, 5, 20, 100]);
+  });
+
+  describe('two-step spin (roll → claim)', () => {
+    beforeEach(() => {
+      prisma.setConfig(BonusKind.spin, 1, TABLE);
+    });
+
+    it('roll reserves + returns the prize but does NOT credit', async () => {
+      const service = buildService(prisma, ledger, referral, () => 65); // → 5 coins
+      const roll = await service.roll(userId, BonusKind.spin);
+      expect(roll.prize_coins).toBe(5);
+      expect(roll.attempts_remaining).toBe(0);
+      expect(roll.reservation_id).toBe(prisma.attempts[0].id);
+      // Nothing credited yet — the attempt is only reserved.
+      expect(ledger.calls).toHaveLength(0);
+      expect(prisma.attempts).toHaveLength(1);
+    });
+
+    it('roll consumes the daily attempt (a second roll is rejected 429)', async () => {
+      const service = buildService(prisma, ledger, referral, () => 65);
+      await service.roll(userId, BonusKind.spin);
+      await expect(service.roll(userId, BonusKind.spin)).rejects.toMatchObject({ status: 429 });
+    });
+
+    it('claim credits the reserved prize exactly once (idempotent)', async () => {
+      const notifications = new RecordingNotificationHook();
+      const service = buildService(prisma, ledger, referral, () => 65, notifications);
+      const roll = await service.roll(userId, BonusKind.spin);
+      const first = await service.claim(userId, roll.reservation_id);
+      expect(first.prize_coins).toBe(5);
+      expect(first.new_balance).toBe(5);
+      expect(ledger.calls[0].idempotencyKey).toBe(`bonus:${roll.reservation_id}`);
+      expect(referral.calls).toHaveLength(1);
+      expect(notifications.credited).toHaveLength(1);
+      // Re-claiming the same reservation is a no-op credit (no double-count).
+      const second = await service.claim(userId, roll.reservation_id);
+      expect(second.new_balance).toBe(5);
+      expect(ledger.calls).toHaveLength(1);
+      expect(referral.calls).toHaveLength(1);
+      expect(notifications.credited).toHaveLength(1);
+    });
+
+    it('a zero-coin reserved prize claims with no ledger row', async () => {
+      const service = buildService(prisma, ledger, referral, () => 0); // → 0 coins
+      const roll = await service.roll(userId, BonusKind.spin);
+      const result = await service.claim(userId, roll.reservation_id);
+      expect(result.prize_coins).toBe(0);
+      expect(ledger.calls).toHaveLength(0);
+    });
+
+    it('claiming an unknown or foreign reservation is rejected (404)', async () => {
+      const service = buildService(prisma, ledger, referral, () => 65);
+      await expect(service.claim(userId, randomUUID())).rejects.toMatchObject({ status: 404 });
+      const roll = await service.roll(userId, BonusKind.spin);
+      await expect(service.claim(randomUUID(), roll.reservation_id)).rejects.toMatchObject({
+        status: 404,
+      });
+    });
+
+    it('the same roll/claim logic serves scratch (reserve → credit)', async () => {
+      // Scratch config seeded in the outer beforeEach (attemptsPerDay 3, TABLE).
+      const service = buildService(prisma, ledger, referral, () => 65); // → 5 coins
+      const roll = await service.roll(userId, BonusKind.scratch);
+      expect(roll.prize_coins).toBe(5);
+      expect(roll.attempts_remaining).toBe(2); // 3/day − 1
+      expect(ledger.calls).toHaveLength(0); // reserved, not credited
+      const claim = await service.claim(userId, roll.reservation_id);
+      expect(claim.prize_coins).toBe(5);
+      expect(claim.new_balance).toBe(5);
+      expect(ledger.calls).toHaveLength(1);
     });
   });
 

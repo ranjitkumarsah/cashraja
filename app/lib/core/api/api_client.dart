@@ -6,6 +6,7 @@ import 'auth_interceptor.dart';
 import 'models/ad_reward.dart';
 import 'models/auth_tokens.dart';
 import 'models/bonus.dart';
+import 'models/feedback.dart';
 import 'models/game.dart';
 import 'models/gift_card.dart';
 import 'models/offer.dart';
@@ -161,6 +162,36 @@ class ApiClient {
     return ReferralStats.fromJson(body);
   }
 
+  Future<ReferralBreakdown> referralBreakdown() async {
+    final Map<String, dynamic> body = await _get('/referral/breakdown');
+    return ReferralBreakdown.fromJson(body);
+  }
+
+  // ---- Feedback / complaints (H4) ---------------------------------------
+
+  Future<FeedbackEntry> submitFeedback({
+    required FeedbackType type,
+    required String subject,
+    required String message,
+  }) async {
+    final Map<String, dynamic> body = await _post(
+      '/feedback',
+      data: <String, dynamic>{
+        'type': type.wire,
+        'subject': subject,
+        'message': message,
+      },
+    );
+    return FeedbackEntry.fromJson(body);
+  }
+
+  Future<List<FeedbackEntry>> myFeedback() async {
+    final List<dynamic> body = await _getList('/feedback/mine');
+    return body
+        .map((dynamic e) => FeedbackEntry.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
   // ---- Game (D1) ---------------------------------------------------------
 
   Future<GameRound> startGameRound(GameDifficulty difficulty) async {
@@ -206,6 +237,23 @@ class ApiClient {
 
   Future<BonusPlayResult> playBonus(BonusKind kind) async {
     final Map<String, dynamic> body = await _post('/bonus/${kind.wire}/play');
+    return BonusPlayResult.fromJson(body);
+  }
+
+  /// Step 1 (roll): reserve + reveal the server-picked prize WITHOUT crediting,
+  /// so the client can reveal it (scratch card / wheel) before the ad. Credit
+  /// happens later via [claimBonus]. Shared by scratch and spin.
+  Future<BonusRollResult> rollBonus(BonusKind kind) async {
+    final Map<String, dynamic> body = await _post('/bonus/${kind.wire}/roll');
+    return BonusRollResult.fromJson(body);
+  }
+
+  /// Step 2 (claim): credit the reserved prize after the rewarded ad completes.
+  Future<BonusPlayResult> claimBonus(BonusKind kind, String reservationId) async {
+    final Map<String, dynamic> body = await _post(
+      '/bonus/${kind.wire}/claim',
+      data: <String, dynamic>{'reservation_id': reservationId},
+    );
     return BonusPlayResult.fromJson(body);
   }
 

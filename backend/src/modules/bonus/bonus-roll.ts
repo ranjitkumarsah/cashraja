@@ -36,6 +36,23 @@ export function rollWeighted(table: PrizeEntry[], rnd: RandomIntFn): number {
   return table[table.length - 1].coins;
 }
 
+/**
+ * Distinct prize coin amounts from the table, in table order — the set of
+ * possible outcomes surfaced to the app so the spin wheel can render one
+ * legible segment per real prize (never a placeholder).
+ */
+export function distinctPrizes(table: PrizeEntry[]): number[] {
+  const seen = new Set<number>();
+  const prizes: number[] = [];
+  for (const entry of table) {
+    if (!seen.has(entry.coins)) {
+      seen.add(entry.coins);
+      prizes.push(entry.coins);
+    }
+  }
+  return prizes;
+}
+
 /** Validate + parse a bonus_config.weighted_table jsonb value into prize slots. */
 export function parseWeightedTable(value: Prisma.JsonValue): PrizeEntry[] {
   if (!Array.isArray(value)) {

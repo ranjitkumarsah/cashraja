@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -42,7 +43,12 @@ class BonusScreen extends StatelessWidget {
         extendBodyBehindAppBar: true,
         body: const GradientBackground(
           child: SafeArea(
+            // Tabs switch only by tapping the Scratch/Spin labels — swiping is
+            // disabled so a horizontal scratch drag can never be stolen by the
+            // TabBarView and jump to the other tab (owner bug: right→left
+            // scratch used to swipe to Spin).
             child: TabBarView(
+              physics: NeverScrollableScrollPhysics(),
               children: <Widget>[
                 _BonusTab(kind: BonusKind.scratch),
                 _BonusTab(kind: BonusKind.spin),
@@ -95,63 +101,210 @@ class _BonusTabState extends ConsumerState<_BonusTab>
     super.dispose();
   }
 
-  /// Ad-gated claim (G6): entered after the scratch foil is cleared (scratch) or
-  /// the Spin button is pressed. The server rolls AND credits the prize inside
-  /// `play()`, so it is called ONLY after a completed ad watch — Close/forfeit
-  /// never calls it, so no prize is rolled or credited.
-  Future<void> _beginClaim() async {
+  /// Scratch flow (two-step, mirrors spin): once the foil is cleared past the
+  /// threshold, the server rolls + reserves the prize (no credit) and the REAL
+  /// coin amount is revealed on the card immediately — before any ad. The claim
+  /// popup then shows those same coins: Claim → rewarded ad → credit the
+  /// reservation; Close → forfeit (re-cover the card, never credited). A 0-coin
+  /// scratch reveals "No win" with no ad. The server is always authoritative.
+  Future<void> _scratchRoll() async {
     final BonusState? s =
         ref.read(bonusControllerProvider(widget.kind)).valueOrNull;
     if (s == null || !s.canPlay || _playing || _revealed) return;
 
-    final bool isScratch = widget.kind == BonusKind.scratch;
-    final ClaimOutcome outcome = await showAdGatedClaim(
-      context,
-      ref,
-      title: isScratch ? 'Daily scratch card' : 'Spin the wheel',
-      subtitle: 'Watch a short ad to claim your prize.',
-      icon: isScratch ? Icons.auto_awesome_rounded : Icons.casino_rounded,
-    );
-    if (!mounted) return;
-    switch (outcome) {
-      case ClaimOutcome.claimed:
-        await _playAndReveal();
-      case ClaimOutcome.adIncomplete:
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Watch the full ad to claim your prize.')),
-        );
-        _resetScratch();
-      case ClaimOutcome.closed:
-        _resetScratch();
-    }
-  }
-
-  Future<void> _playAndReveal() async {
     setState(() => _playing = true);
     try {
-      final BonusPlayResult result =
-          await ref.read(bonusControllerProvider(widget.kind).notifier).play();
+      final BonusRollResult roll =
+          await ref.read(bonusControllerProvider(widget.kind).notifier).roll();
       if (!mounted) return;
-      if (widget.kind == BonusKind.spin) {
-        _spinFrom = _spinTo % (2 * pi);
-        _spinTo = _spinFrom + (2 * pi * (4 + _rng.nextInt(2))) + _rng.nextDouble() * 2 * pi;
-        unawaited(_spin.forward(from: 0));
-      }
+      // Reveal the real prize on the card right away (not "?"), pre-ad.
       setState(() {
-        _result = result;
+        _result = BonusPlayResult(
+          prizeCoins: roll.prizeCoins,
+          newBalance: 0,
+          attemptsRemaining: roll.attemptsRemaining,
+        );
         _revealed = true;
         _playing = false;
       });
+
+      // A losing scratch (0 coins) has nothing to claim — leave it revealed.
+      if (!roll.isWin) return;
+
+      final ClaimOutcome outcome = await showAdGatedClaim(
+        context,
+        ref,
+        coins: roll.prizeCoins,
+        title: 'Daily scratch card',
+        subtitle: 'Watch a short ad to claim your prize.',
+        icon: Icons.auto_awesome_rounded,
+      );
+      if (!mounted) return;
+      switch (outcome) {
+        case ClaimOutcome.claimed:
+          await _claimScratch(roll.reservationId);
+        case ClaimOutcome.adIncomplete:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Watch the full ad to claim your prize.')),
+          );
+          _forfeitScratch();
+        case ClaimOutcome.closed:
+          _forfeitScratch();
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _playing = false);
       // Attempt-limit or other errors — refresh state so the UI reflects it.
       await ref.read(bonusControllerProvider(widget.kind).notifier).refresh();
       if (!mounted) return;
-      _resetScratch();
+      _forfeitScratch();
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.message)));
     }
+  }
+
+  Future<void> _claimScratch(String reservationId) async {
+    try {
+      final BonusPlayResult result = await ref
+          .read(bonusControllerProvider(widget.kind).notifier)
+          .claim(reservationId);
+      if (!mounted) return;
+      // Card is already revealed with these coins; refresh with the credited
+      // result (same prize, real balance).
+      setState(() => _result = result);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      _forfeitScratch();
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  /// Re-cover the scratch foil after a forfeit/failure, so the un-credited
+  /// reveal is cleared. The reserved attempt was already consumed server-side.
+  void _forfeitScratch() {
+    if (!mounted) return;
+    setState(() {
+      _revealed = false;
+      _result = null;
+      _scratchNonce += 1;
+    });
+  }
+
+  /// Spin flow (Issue 4): tap Spin → the server rolls + reserves the prize (no
+  /// credit) → the wheel decelerates onto that exact segment → THEN the claim
+  /// popup shows the won amount. Claim → rewarded ad → credit the reservation;
+  /// Close → forfeit the reserved prize (never credited). The server is always
+  /// authoritative — the client only animates onto the server's choice.
+  Future<void> _spinNow() async {
+    final BonusState? s =
+        ref.read(bonusControllerProvider(widget.kind)).valueOrNull;
+    if (s == null || !s.canPlay || _playing || _revealed) return;
+
+    setState(() => _playing = true);
+    try {
+      final BonusRollResult roll =
+          await ref.read(bonusControllerProvider(widget.kind).notifier).roll();
+      if (!mounted) return;
+      // Aim the wheel at the reserved prize and spin.
+      _prepareSpinTarget(s.prizes, roll.prizeCoins);
+      await _spin.forward(from: 0);
+      if (!mounted) return;
+      setState(() => _playing = false);
+
+      // A losing spin (0 coins) has nothing to claim — reveal it directly.
+      if (!roll.isWin) {
+        setState(() {
+          _result = BonusPlayResult(
+            prizeCoins: 0,
+            newBalance: 0,
+            attemptsRemaining: roll.attemptsRemaining,
+          );
+          _revealed = true;
+        });
+        return;
+      }
+
+      final ClaimOutcome outcome = await showAdGatedClaim(
+        context,
+        ref,
+        coins: roll.prizeCoins,
+        title: 'You won!',
+        subtitle: 'Watch a short ad to claim your coins.',
+        icon: Icons.casino_rounded,
+      );
+      if (!mounted) return;
+      switch (outcome) {
+        case ClaimOutcome.claimed:
+          await _claimSpin(roll.reservationId);
+        case ClaimOutcome.adIncomplete:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Watch the full ad to claim your prize.')),
+          );
+          _resetSpin();
+        case ClaimOutcome.closed:
+          _resetSpin();
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _playing = false);
+      await ref.read(bonusControllerProvider(widget.kind).notifier).refresh();
+      if (!mounted) return;
+      _resetSpin();
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  Future<void> _claimSpin(String reservationId) async {
+    try {
+      final BonusPlayResult result = await ref
+          .read(bonusControllerProvider(widget.kind).notifier)
+          .claim(reservationId);
+      if (!mounted) return;
+      setState(() {
+        _result = result;
+        _revealed = true;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      _resetSpin();
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  /// Clears a forfeited/failed spin without revealing a prize. The reserved
+  /// attempt was already consumed server-side, so `canPlay` reflects that.
+  void _resetSpin() {
+    if (!mounted) return;
+    setState(() {
+      _revealed = false;
+      _result = null;
+    });
+  }
+
+  /// Compute the wheel's target angle so the pointer (top) lands on the segment
+  /// for [prizeCoins]. Segment i is centred at `i*sweep + sweep/2` (canvas 0rad
+  /// = 3 o'clock, clockwise); the pointer sits at -pi/2, so the wheel must turn
+  /// to `-pi/2 - center`, plus several full spins for the decelerating effect.
+  void _prepareSpinTarget(List<int> prizes, int prizeCoins) {
+    _spinFrom = _spinTo % (2 * pi);
+    final double targetMod = _landingAngleFor(prizes, prizeCoins);
+    final int turns = 5 + _rng.nextInt(2); // 5–6 full revolutions
+    final double delta = (targetMod - _spinFrom) % (2 * pi);
+    _spinTo = _spinFrom + turns * 2 * pi + delta;
+  }
+
+  double _landingAngleFor(List<int> prizes, int prizeCoins) {
+    if (prizes.isEmpty) return _rng.nextDouble() * 2 * pi;
+    int idx = prizes.indexOf(prizeCoins);
+    if (idx < 0) idx = 0;
+    final double sweep = 2 * pi / prizes.length;
+    final double center = idx * sweep + sweep / 2;
+    return (-pi / 2 - center) % (2 * pi);
   }
 
   /// "Play again" after a revealed prize.
@@ -161,13 +314,6 @@ class _BonusTabState extends ConsumerState<_BonusTab>
       _revealed = false;
       _scratchNonce += 1;
     });
-  }
-
-  /// Re-cover the scratch foil without consuming an attempt (forfeit / ad not
-  /// finished).
-  void _resetScratch() {
-    if (!mounted) return;
-    setState(() => _scratchNonce += 1);
   }
 
   @override
@@ -218,7 +364,7 @@ class _BonusTabState extends ConsumerState<_BonusTab>
                       revealed: _revealed,
                       result: _result,
                       canScratch: s.canPlay && !_playing,
-                      onThresholdReached: _beginClaim,
+                      onThresholdReached: _scratchRoll,
                     )
                   : _SpinWheel(
                       animation: _spin,
@@ -226,6 +372,7 @@ class _BonusTabState extends ConsumerState<_BonusTab>
                       to: _spinTo,
                       revealed: _revealed,
                       result: _result,
+                      prizes: s.prizes,
                     ),
             ),
             if (widget.kind == BonusKind.scratch && !_revealed) ...<Widget>[
@@ -270,7 +417,7 @@ class _BonusTabState extends ConsumerState<_BonusTab>
     return PrimaryButton(
       label: 'Spin now',
       loading: _playing,
-      onPressed: canPlay ? _beginClaim : null,
+      onPressed: canPlay ? _spinNow : null,
     );
   }
 }
@@ -318,8 +465,9 @@ class _PrizeReveal extends StatelessWidget {
 
 /// Real scratch-to-reveal card (G6). The gold foil is drawn over the prize area
 /// and the user drags a finger to erase it (a `CustomPainter` clearing circles
-/// along the drag path). Once ~45% is scratched, [onThresholdReached] fires — at
-/// which point the ad-gated claim decides whether the server rolls the prize.
+/// along the drag path). Once ~45% is scratched, [onThresholdReached] fires,
+/// which rolls + reserves the prize server-side and reveals the real coin
+/// amount on the card before the ad-gated claim.
 class _ScratchCard extends StatefulWidget {
   const _ScratchCard({
     super.key,
@@ -399,7 +547,10 @@ class _ScratchCardState extends State<_ScratchCard> {
                 borderRadius: BorderRadius.circular(20),
                 child: CustomPaint(
                   size: const Size(_width, _height),
-                  painter: _FoilPainter(points: _points),
+                  // Hand the painter a fresh snapshot each build so it is a
+                  // different list instance from the previous delegate — the
+                  // foil then actually repaints (erases) as the finger drags.
+                  painter: _FoilPainter(points: List<Offset>.of(_points)),
                 ),
               ),
             ),
@@ -447,6 +598,7 @@ class _FoilPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _FoilPainter oldDelegate) =>
+      !identical(oldDelegate.points, points) ||
       oldDelegate.points.length != points.length;
 }
 
@@ -457,6 +609,7 @@ class _SpinWheel extends StatelessWidget {
     required this.to,
     required this.revealed,
     required this.result,
+    required this.prizes,
   });
 
   final Animation<double> animation;
@@ -464,6 +617,9 @@ class _SpinWheel extends StatelessWidget {
   final double to;
   final bool revealed;
   final BonusPlayResult? result;
+
+  /// The real prize set — one labelled segment per entry.
+  final List<int> prizes;
 
   @override
   Widget build(BuildContext context) {
@@ -483,7 +639,7 @@ class _SpinWheel extends StatelessWidget {
                 },
                 child: CustomPaint(
                   size: const Size(220, 220),
-                  painter: _WheelPainter(),
+                  painter: _WheelPainter(prizes: prizes),
                 ),
               ),
               // Center hub.
@@ -513,14 +669,20 @@ class _SpinWheel extends StatelessWidget {
   }
 }
 
+/// Draws the prize wheel: one segment per real prize amount, each labelled with
+/// its coin value (a legible white number) plus a small gold "C" coin disc that
+/// matches [CoinGlyph] — so every segment reads like "50 C".
 class _WheelPainter extends CustomPainter {
-  static const List<Color> _segments = <Color>[
+  _WheelPainter({required this.prizes});
+
+  final List<int> prizes;
+
+  // Alternating segment fills chosen for strong contrast against white labels.
+  static const List<Color> _fills = <Color>[
     RajaColors.indigo,
     RajaColors.surfaceHigh,
     RajaColors.indigoSoft,
     RajaColors.surface,
-    RajaColors.indigo,
-    RajaColors.surfaceHigh,
   ];
 
   @override
@@ -528,13 +690,31 @@ class _WheelPainter extends CustomPainter {
     final Offset center = Offset(size.width / 2, size.height / 2);
     final double radius = size.width / 2;
     final Rect rect = Rect.fromCircle(center: center, radius: radius);
-    final double sweep = 2 * pi / _segments.length;
+    // Fall back to 6 blank segments only when the prize set is unknown.
+    final int count = prizes.isEmpty ? 6 : prizes.length;
+    final double sweep = 2 * pi / count;
 
-    for (int i = 0; i < _segments.length; i++) {
-      final Paint paint = Paint()
-        ..style = PaintingStyle.fill
-        ..color = _segments[i];
-      canvas.drawArc(rect, i * sweep, sweep, true, paint);
+    for (int i = 0; i < count; i++) {
+      canvas.drawArc(
+        rect,
+        i * sweep,
+        sweep,
+        true,
+        Paint()
+          ..style = PaintingStyle.fill
+          ..color = _fills[i % _fills.length],
+      );
+      // Thin divider between segments for definition.
+      canvas.drawArc(
+        rect,
+        i * sweep,
+        sweep,
+        true,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..color = RajaColors.border,
+      );
     }
     // Rim.
     canvas.drawCircle(
@@ -545,39 +725,73 @@ class _WheelPainter extends CustomPainter {
         ..strokeWidth = 4
         ..color = RajaColors.gold,
     );
-    // Coin markers per segment — a small gold coin disc (the app economy is
-    // coins, not rupees), matching the CoinGlyph used elsewhere.
-    for (int i = 0; i < _segments.length; i++) {
+
+    if (prizes.isEmpty) return;
+
+    // Per-segment label: the prize number + a small gold coin glyph.
+    for (int i = 0; i < count; i++) {
       final double a = i * sweep + sweep / 2;
-      final Offset p = Offset(
-        center.dx + cos(a) * radius * 0.62,
-        center.dy + sin(a) * radius * 0.62,
+      final Offset labelCenter = Offset(
+        center.dx + cos(a) * radius * 0.60,
+        center.dy + sin(a) * radius * 0.60,
       );
-      const double coinR = 11;
-      canvas.drawCircle(p, coinR, Paint()..color = RajaColors.gold);
-      canvas.drawCircle(
-        p,
-        coinR,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5
-          ..color = RajaColors.goldDeep,
-      );
-      final TextPainter tp = TextPainter(
+      final TextPainter number = TextPainter(
         textDirection: TextDirection.ltr,
-        text: const TextSpan(
-          text: '\$',
-          style: TextStyle(
-            color: RajaColors.indigoDeep,
+        text: TextSpan(
+          text: '${prizes[i]}',
+          style: const TextStyle(
+            color: Colors.white,
             fontWeight: FontWeight.w900,
-            fontSize: 13,
+            fontSize: 18,
+            shadows: <Shadow>[
+              Shadow(color: Color(0xCC000000), blurRadius: 3),
+            ],
           ),
         ),
       )..layout();
-      tp.paint(canvas, p - Offset(tp.width / 2, tp.height / 2));
+
+      const double coinR = 8;
+      const double gap = 3;
+      // Stack the number above the coin, the pair centred on labelCenter.
+      final double blockH = number.height + gap + coinR * 2;
+      final double top = labelCenter.dy - blockH / 2;
+      number.paint(
+        canvas,
+        Offset(labelCenter.dx - number.width / 2, top),
+      );
+      final Offset coin =
+          Offset(labelCenter.dx, top + number.height + gap + coinR);
+      canvas.drawCircle(
+        coin,
+        coinR,
+        Paint()
+          ..shader = RajaColors.goldGradient
+              .createShader(Rect.fromCircle(center: coin, radius: coinR)),
+      );
+      canvas.drawCircle(
+        coin,
+        coinR,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..color = RajaColors.goldLight,
+      );
+      final TextPainter c = TextPainter(
+        textDirection: TextDirection.ltr,
+        text: const TextSpan(
+          text: 'C',
+          style: TextStyle(
+            color: Color(0xFF5A3E00),
+            fontWeight: FontWeight.w900,
+            fontSize: 11,
+          ),
+        ),
+      )..layout();
+      c.paint(canvas, coin - Offset(c.width / 2, c.height / 2));
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _WheelPainter oldDelegate) =>
+      !listEquals(oldDelegate.prizes, prizes);
 }

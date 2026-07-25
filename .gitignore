@@ -30,3 +30,4 @@ Thumbs.db
 
 # Prisma
 backend/prisma/*.db
+app/android/build/

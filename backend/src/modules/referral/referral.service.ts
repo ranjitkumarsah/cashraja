@@ -25,6 +25,36 @@ export interface ReferralStatsView {
   total_earned_from_referrals: number;
 }
 
+/** One referred user's row in the referral breakdown (H2). */
+export interface ReferredUserView {
+  display_name: string;
+  joined_at: string;
+  /** the referred user's positive ledger credits inside the referral window */
+  their_earnings_total: number;
+  /** what the caller (referrer) earned from this user, summed from referral_earnings */
+  commission_earned_by_me: number;
+  /** whether the bonus window is still open */
+  window_active: boolean;
+  valid_until: string;
+}
+
+export interface ReferralBreakdownView {
+  referred: ReferredUserView[];
+  totals: {
+    referred_count: number;
+    active_count: number;
+    total_commission: number;
+  };
+  config: {
+    bonus_percent: number;
+    window_days: number;
+  };
+}
+
+const REFERRAL_CONFIG_KEY = 'referral.bonus_percent';
+const DEFAULT_BONUS_PERCENT = 10;
+const DEFAULT_WINDOW_DAYS = 30;
+
 /**
  * Referral earnings fan-out (D4.3) + read endpoints (D4.1).
  *
@@ -211,6 +241,83 @@ export class ReferralService {
       referred_count: referredCount,
       active_referrals: activeReferrals,
       total_earned_from_referrals: earned._sum.amount ?? 0,
+    };
+  }
+
+  /**
+   * H2 — per-referred-user breakdown for the referrer's Invite page. Each row
+   * shows the referred user's in-window earnings and the commission the caller
+   * earned from them (derived from referral_earnings → bonus ledger credits).
+   * Percent/window in `config` come from the current app_config snapshot.
+   */
+  async breakdown(userId: string): Promise<ReferralBreakdownView> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const config = await this.referralConfig();
+    const now = Date.now();
+
+    const referrals = await this.prisma.referral.findMany({
+      where: { referrerId: userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        referred: { select: { displayName: true, createdAt: true } },
+        earnings: { include: { bonusLedger: { select: { amount: true } } } },
+      },
+    });
+
+    const referred = await Promise.all(
+      referrals.map(async (r): Promise<ReferredUserView> => {
+        // Commission I earned from this user = sum of the referral bonus credits.
+        const commission = r.earnings.reduce((acc, e) => acc + e.bonusLedger.amount, 0);
+        // Their in-window earnings = positive ledger credits between the referral
+        // opening (createdAt) and the window close (validUntil).
+        const earned = await this.prisma.coinLedger.aggregate({
+          where: {
+            userId: r.referredId,
+            amount: { gt: 0 },
+            createdAt: { gte: r.createdAt, lte: r.validUntil },
+          },
+          _sum: { amount: true },
+        });
+        return {
+          display_name: r.referred.displayName,
+          joined_at: r.referred.createdAt.toISOString(),
+          their_earnings_total: earned._sum.amount ?? 0,
+          commission_earned_by_me: commission,
+          window_active: r.validUntil.getTime() > now,
+          valid_until: r.validUntil.toISOString(),
+        };
+      }),
+    );
+
+    return {
+      referred,
+      totals: {
+        referred_count: referred.length,
+        active_count: referred.filter((r) => r.window_active).length,
+        total_commission: referred.reduce((acc, r) => acc + r.commission_earned_by_me, 0),
+      },
+      config: {
+        bonus_percent: config.percent,
+        window_days: config.windowDays,
+      },
+    };
+  }
+
+  /** Current referral percent/window snapshot (mirrors AuthService.referralDefaults). */
+  private async referralConfig(): Promise<{ percent: number; windowDays: number }> {
+    const row = await this.prisma.appConfig.findFirst({
+      where: { key: REFERRAL_CONFIG_KEY },
+      orderBy: { version: 'desc' },
+    });
+    const value = (row?.value ?? {}) as { percent?: unknown; window_days?: unknown };
+    return {
+      percent: typeof value.percent === 'number' ? value.percent : DEFAULT_BONUS_PERCENT,
+      windowDays: typeof value.window_days === 'number' ? value.window_days : DEFAULT_WINDOW_DAYS,
     };
   }
 

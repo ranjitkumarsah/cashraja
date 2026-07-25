@@ -26,12 +26,13 @@ class CoinGlyph extends StatelessWidget {
         ],
       ),
       alignment: Alignment.center,
+      // "C" for Cash Raja — the in-app earning currency is coins, never rupees.
       child: Text(
-        '₹',
+        'C',
         style: TextStyle(
-          fontSize: size * 0.56,
+          fontSize: size * 0.62,
           height: 1,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w900,
           color: const Color(0xFF5A3E00),
         ),
       ),

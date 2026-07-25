@@ -2,6 +2,7 @@ import {
   Gift,
   LayoutDashboard,
   Megaphone,
+  MessageSquare,
   Package,
   Settings,
   ShieldAlert,
@@ -29,6 +30,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/offers', label: 'Offers', icon: Megaphone, roles: SUPER },
   { to: '/inventory', label: 'Inventory', icon: Package, roles: SUPER },
   { to: '/fraud', label: 'Fraud', icon: ShieldAlert, roles: ALL },
+  { to: '/feedback', label: 'Feedback', icon: MessageSquare, roles: ALL },
   { to: '/config', label: 'Config', icon: Settings, roles: SUPER },
   { to: '/admins', label: 'Admins', icon: UserCog, roles: SUPER },
 ];

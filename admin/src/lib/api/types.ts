@@ -235,6 +235,23 @@ export interface FraudFlagView {
   created_at: string;
 }
 
+/* Feedback & complaints — GET/POST /api/admin/feedback (reviewer-visible) */
+export type FeedbackType = 'feedback' | 'complaint';
+export type FeedbackStatus = 'open' | 'in_review' | 'resolved';
+
+export interface AdminFeedbackView {
+  id: string;
+  user: { id: string; email: string; display_name: string };
+  type: FeedbackType;
+  subject: string;
+  message: string;
+  status: FeedbackStatus;
+  admin_reply: string | null;
+  resolved_by_admin_id: string | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
 /* C5.10 Config */
 export interface ConfigView {
   key: string;

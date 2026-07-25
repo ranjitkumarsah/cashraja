@@ -15,6 +15,15 @@ interface FakeReferral {
   referredId: string;
   bonusPercent: Prisma.Decimal;
   validUntil: Date;
+  createdAt: Date;
+}
+
+interface FakeCoinRow {
+  id: string;
+  userId: string;
+  amount: number;
+  sourceType: string;
+  createdAt: Date;
 }
 
 interface FakeReferralEarning {
@@ -28,6 +37,8 @@ interface FakeUserRow {
   id: string;
   status: UserStatus;
   referralCode: string;
+  displayName: string;
+  createdAt: Date;
   ledger: Array<{ amount: number; sourceType: string }>;
 }
 
@@ -43,6 +54,8 @@ class FakeReferralPrisma {
   earnings: FakeReferralEarning[] = [];
   users = new Map<string, FakeUserRow>();
   devices: Array<{ userId: string; deviceFingerprint: string }> = [];
+  coinRows: FakeCoinRow[] = [];
+  appConfigRow: { value: unknown } | null = null;
 
   linkDevice(userId: string, deviceFingerprint: string): void {
     this.devices.push({ userId, deviceFingerprint });
@@ -53,22 +66,60 @@ class FakeReferralPrisma {
       id: randomUUID(),
       status,
       referralCode: `CODE${randomUUID().slice(0, 6).toUpperCase()}`,
+      displayName: 'Test User',
+      createdAt: new Date(Date.now() - 60 * 60 * 1000),
       ledger: [],
     };
     this.users.set(row.id, row);
     return row;
   }
 
-  addReferral(referrerId: string, referredId: string, percent: number, validUntil: Date): FakeReferral {
+  addReferral(
+    referrerId: string,
+    referredId: string,
+    percent: number,
+    validUntil: Date,
+    createdAt: Date = new Date(Date.now() - 60 * 60 * 1000),
+  ): FakeReferral {
     const row: FakeReferral = {
       id: randomUUID(),
       referrerId,
       referredId,
       bonusPercent: new Prisma.Decimal(percent),
       validUntil,
+      createdAt,
     };
     this.referrals.push(row);
     return row;
+  }
+
+  /** Seed a referral bonus credit (referrer's earning) linked to a referral. */
+  addEarning(referralId: string, bonusAmount: number): FakeReferralEarning {
+    const bonusLedgerId = randomUUID();
+    this.coinRows.push({
+      id: bonusLedgerId,
+      userId: '',
+      amount: bonusAmount,
+      sourceType: 'referral',
+      createdAt: new Date(),
+    });
+    const row: FakeReferralEarning = {
+      id: randomUUID(),
+      referralId,
+      sourceLedgerId: randomUUID(),
+      bonusLedgerId,
+    };
+    this.earnings.push(row);
+    return row;
+  }
+
+  /** Seed a positive ledger credit for a referred user (used by breakdown). */
+  addCoinCredit(userId: string, amount: number, createdAt: Date): void {
+    this.coinRows.push({ id: randomUUID(), userId, amount, sourceType: 'offer', createdAt });
+  }
+
+  setReferralConfig(percent: number, windowDays: number): void {
+    this.appConfigRow = { value: { percent, window_days: windowDays } };
   }
 
   readonly referral = {
@@ -82,6 +133,34 @@ class FakeReferralPrisma {
             (!args.where.validUntil || r.validUntil > args.where.validUntil.gt),
         ).length,
       ),
+    findMany: (args: { where: { referrerId: string } }) =>
+      Promise.resolve(
+        this.referrals
+          .filter((r) => r.referrerId === args.where.referrerId)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .map((r) => {
+            const referred = this.users.get(r.referredId);
+            return {
+              ...r,
+              referred: {
+                displayName: referred?.displayName ?? 'Unknown',
+                createdAt: referred?.createdAt ?? new Date(0),
+              },
+              earnings: this.earnings
+                .filter((e) => e.referralId === r.id)
+                .map((e) => ({
+                  ...e,
+                  bonusLedger: {
+                    amount: this.coinRows.find((c) => c.id === e.bonusLedgerId)?.amount ?? 0,
+                  },
+                })),
+            };
+          }),
+      ),
+  };
+
+  readonly appConfig = {
+    findFirst: () => Promise.resolve(this.appConfigRow),
   };
 
   readonly referralEarning = {
@@ -115,13 +194,36 @@ class FakeReferralPrisma {
   };
 
   readonly coinLedger = {
-    aggregate: (args: { where: { userId: string; sourceType: string }; _sum: unknown }) => {
-      const row = this.users.get(args.where.userId);
-      const sum = row
-        ? row.ledger
-            .filter((l) => l.sourceType === args.where.sourceType)
-            .reduce((acc, l) => acc + l.amount, 0)
-        : 0;
+    aggregate: (args: {
+      where: {
+        userId: string;
+        sourceType?: string;
+        amount?: { gt: number };
+        createdAt?: { gte: Date; lte: Date };
+      };
+      _sum: unknown;
+    }) => {
+      const w = args.where;
+      // stats path: sum by sourceType over the user's in-memory ledger
+      if (w.sourceType !== undefined) {
+        const row = this.users.get(w.userId);
+        const sum = row
+          ? row.ledger
+              .filter((l) => l.sourceType === w.sourceType)
+              .reduce((acc, l) => acc + l.amount, 0)
+          : 0;
+        return Promise.resolve({ _sum: { amount: sum === 0 ? null : sum } });
+      }
+      // breakdown path: positive credits inside a window
+      const sum = this.coinRows
+        .filter(
+          (c) =>
+            c.userId === w.userId &&
+            (w.amount === undefined || c.amount > w.amount.gt) &&
+            (w.createdAt === undefined ||
+              (c.createdAt >= w.createdAt.gte && c.createdAt <= w.createdAt.lte)),
+        )
+        .reduce((acc, c) => acc + c.amount, 0);
       return Promise.resolve({ _sum: { amount: sum === 0 ? null : sum } });
     },
   };
@@ -308,6 +410,54 @@ describe('ReferralService', () => {
       referred_count: 2,
       active_referrals: 1,
       total_earned_from_referrals: 15,
+    });
+  });
+
+  describe('breakdown', () => {
+    it('returns per-user detail with commission, in-window earnings and totals', async () => {
+      const referrer = prisma.addUser();
+      const alice = prisma.addUser();
+      alice.displayName = 'Alice';
+      const bob = prisma.addUser();
+      bob.displayName = 'Bob';
+
+      const now = Date.now();
+      const refA = prisma.addReferral(referrer.id, alice.id, 10, new Date(now + 5 * 24 * 3600 * 1000));
+      const refB = prisma.addReferral(referrer.id, bob.id, 10, new Date(now - 24 * 3600 * 1000)); // expired
+
+      // Alice earned inside her window; referrer took two commission credits.
+      prisma.addCoinCredit(alice.id, 100, new Date(now - 30 * 60 * 1000));
+      prisma.addCoinCredit(alice.id, 50, new Date(now - 20 * 60 * 1000));
+      prisma.addEarning(refA.id, 10);
+      prisma.addEarning(refA.id, 5);
+      // Bob earned but the referrer got one commission credit.
+      prisma.addCoinCredit(bob.id, 200, new Date(now - 30 * 60 * 1000));
+      prisma.addEarning(refB.id, 20);
+
+      prisma.setReferralConfig(10, 30);
+
+      const view = await service.breakdown(referrer.id);
+
+      expect(view.config).toEqual({ bonus_percent: 10, window_days: 30 });
+      expect(view.totals).toEqual({ referred_count: 2, active_count: 1, total_commission: 35 });
+      expect(view.referred).toHaveLength(2);
+
+      const aliceRow = view.referred.find((r) => r.display_name === 'Alice')!;
+      expect(aliceRow.their_earnings_total).toBe(150);
+      expect(aliceRow.commission_earned_by_me).toBe(15);
+      expect(aliceRow.window_active).toBe(true);
+
+      const bobRow = view.referred.find((r) => r.display_name === 'Bob')!;
+      expect(bobRow.commission_earned_by_me).toBe(20);
+      expect(bobRow.window_active).toBe(false);
+    });
+
+    it('falls back to default percent/window when app_config has no row', async () => {
+      const referrer = prisma.addUser();
+      const view = await service.breakdown(referrer.id);
+      expect(view.config).toEqual({ bonus_percent: 10, window_days: 30 });
+      expect(view.referred).toHaveLength(0);
+      expect(view.totals).toEqual({ referred_count: 0, active_count: 0, total_commission: 0 });
     });
   });
 });
