@@ -1,0 +1,22 @@
+# Build context = repo root. Ship only what the image build needs (admin/ +
+# backend/ source). Everything else is excluded to keep uploads small & fast.
+.git
+.gitattributes
+**/node_modules
+**/dist
+backend/client
+app/
+docs/
+deploy/
+scripts/
+**/.env
+**/.env.*
+!**/.env.example
+**/coverage
+**/*.spec.ts
+**/*.test.ts
+**/*.test.tsx
+**/.vscode
+**/.idea
+*.md
+!admin/README.md

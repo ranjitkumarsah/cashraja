@@ -1,6 +1,9 @@
+import { existsSync } from 'node:fs';
+import { extname, join } from 'node:path';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule } from '@nestjs/swagger';
 import { Logger, LoggerErrorInterceptor } from 'nestjs-pino';
 import type { NextFunction, Request, Response } from 'express';
@@ -11,7 +14,10 @@ import { buildOpenApiDocument, OPENAPI_DOCS_PATH } from './openapi';
 async function bootstrap(): Promise<void> {
   // rawBody: webhook HMAC schemes sign the exact bytes the network sent
   // (adapters verify against req.rawBody, never the re-serialized body).
-  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+    rawBody: true,
+  });
 
   app.useLogger(app.get(Logger));
   app.useGlobalInterceptors(new LoggerErrorInterceptor());
@@ -43,6 +49,26 @@ async function bootstrap(): Promise<void> {
     allowedHeaders: ['Content-Type', 'Authorization'],
     maxAge: 86400,
   });
+
+  // Bundled admin panel + marketing landing SPA. The Vite build is copied to
+  // ../client in the production image (see Dockerfile), so one Fly app serves
+  // the API, admin, and landing on the same origin — the admin's relative `/api`
+  // just works and no browser CORS is involved. Absent in dev (Vite serves it).
+  const clientDir = join(__dirname, '..', 'client');
+  if (existsSync(clientDir)) {
+    app.useStaticAssets(clientDir);
+    const indexHtml = join(clientDir, 'index.html');
+    // SPA fallback: a GET for a non-API, extension-less path (a client-side
+    // route like /, /privacy, /admin/dashboard) returns index.html so deep
+    // links and reloads resolve. Real assets and /api/* pass through.
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+      const p = req.path;
+      if (p.startsWith('/api') || p === '/healthz' || p === '/readyz') return next();
+      if (extname(p)) return next();
+      res.sendFile(indexHtml);
+    });
+  }
 
   // Interactive API docs (+ live spec) — non-prod only. The committed
   // shared/openapi.json is regenerated via `npm run openapi:emit`.

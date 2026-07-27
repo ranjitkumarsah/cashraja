@@ -1,0 +1,45 @@
+# Cash Raja on Fly.io — single app: NestJS API + bundled admin/landing SPA.
+# Deploy from the REPO ROOT:  fly deploy
+# Data stores are Neon (Postgres) + Upstash (Redis), set as secrets:
+#   fly secrets set DATABASE_URL=… REDIS_URL=… JWT_ACCESS_SECRET=… … (see DEPLOY.md)
+app = "cashraja-backend"
+primary_region = "bom" # Mumbai — closest to the India user base
+
+[build]
+  dockerfile = "Dockerfile" # root Dockerfile, root build context
+
+# Run pending migrations once in a throwaway machine before the release goes
+# live (the container entrypoint also guards this — idempotent + locked).
+[deploy]
+  release_command = "npx prisma migrate deploy"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+  # BullMQ postback worker runs in-process; keep it enabled.
+  POSTBACK_WORKER_ENABLED = "true"
+  OFFERWALL_NETWORKS = ""
+  AD_NETWORKS = ""
+  STREAK_REMINDER_ENABLED = "true"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  # Keep one machine alive: stopping it kills the BullMQ worker, cron jobs
+  # (reconciliation, metrics, streak reminders) and the stats cache. Never
+  # auto-stop a money app with background processing.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "40s"
+    method = "GET"
+    path = "/healthz"
+
+# 256MB OOMs under NestJS + Prisma + BullMQ. 512MB is the smallest safe size.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

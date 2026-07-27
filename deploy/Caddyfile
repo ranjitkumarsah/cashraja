@@ -1,42 +1,15 @@
 # Cash Raja — Caddy reverse proxy (automatic Let's Encrypt HTTPS).
-# SITE_DOMAIN / API_DOMAIN are injected from the environment (see compose).
+# The backend now serves the admin + landing SPA itself, so Caddy just
+# terminates TLS and proxies both domains to it.
 #
-#   SITE_DOMAIN = cashraja.graduatedcoder.in      → landing (/) + admin (/admin/*)
-#   API_DOMAIN  = api.cashraja.graduatedcoder.in  → backend API (Flutter app + postbacks)
+#   SITE_DOMAIN = cashraja.graduatedcoder.in      → landing (/) + admin (/admin/*) + /api
+#   API_DOMAIN  = api.cashraja.graduatedcoder.in  → same backend (Flutter app + postbacks)
 
-# ── Public site: static SPA + same-origin /api proxy ─────────────────────────
 {$SITE_DOMAIN} {
 	encode gzip zstd
-
-	# Same-origin API so the admin panel's relative `/api` calls just work
-	# (no CORS needed for the browser). Health probes pass through too.
-	handle /api/* {
-		reverse_proxy backend:3000
-	}
-	handle /healthz {
-		reverse_proxy backend:3000
-	}
-	handle /readyz {
-		reverse_proxy backend:3000
-	}
-
-	# Everything else is the built SPA. try_files → index.html enables
-	# client-side routing for /, /privacy, /admin/*, etc.
-	handle {
-		header {
-			-Server
-			X-Content-Type-Options nosniff
-			X-Frame-Options DENY
-			Referrer-Policy no-referrer
-			Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		}
-		root * /srv/admin
-		try_files {path} /index.html
-		file_server
-	}
+	reverse_proxy backend:3000
 }
 
-# ── API subdomain: backend only (used by the Flutter app + offerwall postbacks)
 {$API_DOMAIN} {
 	encode gzip zstd
 	reverse_proxy backend:3000

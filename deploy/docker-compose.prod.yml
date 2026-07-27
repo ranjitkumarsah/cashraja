@@ -39,7 +39,7 @@ services:
 
   backend:
     build:
-      context: ../backend
+      context: ..
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
@@ -81,8 +81,6 @@ services:
       API_DOMAIN: ${API_DOMAIN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      # Built admin+landing SPA (see DEPLOY.md: `npm run build` → copy dist here).
-      - ./admin-dist:/srv/admin:ro
       - caddy_data:/data
       - caddy_config:/config
 
@@ -90,9 +88,9 @@ services:
   # (full deps incl. ts-node). Run once via --profile seed; never starts normally.
   seed:
     build:
-      context: ../backend
+      context: ..
       dockerfile: Dockerfile
-      target: builder
+      target: backend-build
     profiles: ['seed']
     depends_on:
       postgres:
