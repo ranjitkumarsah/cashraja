@@ -299,3 +299,38 @@ export interface AdminView {
 export interface CreateAdminResult extends AdminView {
   temp_password: string;
 }
+
+// ─────────────────────── Notifications (H8 admin broadcast) ───────────────────────
+
+export type BroadcastAudienceType = 'all' | 'users';
+
+export interface BroadcastAudience {
+  type: BroadcastAudienceType;
+  /** Required (non-empty) when type = 'users'. */
+  user_ids?: string[];
+}
+
+export interface SendBroadcastRequest {
+  title: string;
+  body: string;
+  audience: BroadcastAudience;
+}
+
+export interface BroadcastView {
+  id: string;
+  title: string;
+  body: string;
+  audience_type: BroadcastAudienceType;
+  target_count: number;
+  sent_by_admin_id: string;
+  sent_by_admin_email: string | null;
+  created_at: string;
+}
+
+export interface SendBroadcastResult {
+  broadcast: BroadcastView;
+}
+
+export interface BroadcastListResult {
+  broadcasts: BroadcastView[];
+}

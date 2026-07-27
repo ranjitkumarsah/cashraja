@@ -1094,6 +1094,44 @@
         ]
       }
     },
+    "/api/admin/notifications/broadcast": {
+      "post": {
+        "operationId": "AdminNotificationsController_broadcast",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BroadcastNotificationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/notifications/broadcasts": {
+      "get": {
+        "operationId": "AdminNotificationsController_history",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/admin/dashboard/metrics": {
       "get": {
         "operationId": "AdminMetricsController_metrics_",
@@ -1731,6 +1769,10 @@
         "properties": {}
       },
       "ResolveFraudDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "BroadcastNotificationDto": {
         "type": "object",
         "properties": {}
       },

@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 import { LedgerModule } from '../ledger/ledger.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { AdminAdminsController } from './admin-admins.controller';
 import { AdminAdminsService } from './admin-admins.service';
 import { AdminConfigController } from './admin-config.controller';
 import { AdminConfigService } from './admin-config.service';
 import { AdminFraudController } from './admin-fraud.controller';
 import { AdminFraudService } from './admin-fraud.service';
+import { AdminNotificationsController } from './admin-notifications.controller';
+import { AdminNotificationsService } from './admin-notifications.service';
 import { AdminOffersController } from './admin-offers.controller';
 import { AdminOffersService } from './admin-offers.service';
 import { AdminUsersController } from './admin-users.controller';
@@ -17,13 +20,14 @@ import { AdminUsersService } from './admin-users.service';
  * enforced per-route via @Roles + RolesGuard behind AdminAuthGuard.
  */
 @Module({
-  imports: [LedgerModule],
+  imports: [LedgerModule, NotificationsModule],
   controllers: [
     AdminUsersController,
     AdminOffersController,
     AdminConfigController,
     AdminAdminsController,
     AdminFraudController,
+    AdminNotificationsController,
   ],
   providers: [
     AdminUsersService,
@@ -31,6 +35,7 @@ import { AdminUsersService } from './admin-users.service';
     AdminConfigService,
     AdminAdminsService,
     AdminFraudService,
+    AdminNotificationsService,
   ],
   exports: [AdminUsersService],
 })

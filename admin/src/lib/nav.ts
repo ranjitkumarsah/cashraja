@@ -1,4 +1,5 @@
 import {
+  Bell,
   ClipboardList,
   Gift,
   LayoutDashboard,
@@ -33,6 +34,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/fraud', label: 'Fraud', icon: ShieldAlert, roles: ALL },
   { to: '/feedback', label: 'Feedback', icon: MessageSquare, roles: ALL },
   { to: '/manual-offers', label: 'Manual offers', icon: ClipboardList, roles: ALL },
+  { to: '/notifications', label: 'Send notification', icon: Bell, roles: SUPER },
   { to: '/config', label: 'Config', icon: Settings, roles: SUPER },
   { to: '/admins', label: 'Admins', icon: UserCog, roles: SUPER },
 ];

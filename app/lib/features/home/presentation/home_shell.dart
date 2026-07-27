@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/device/private_dns_service.dart';
+import '../../../core/providers.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/raja_colors.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../../notifications/data/push_messaging.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
 import '../../tasks/presentation/tasks_screen.dart';
@@ -28,7 +32,22 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkPrivateDns());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPrivateDns();
+      _registerPush();
+    });
+  }
+
+  /// On authenticated startup: request notification permission, register the
+  /// FCM token, and wire tap-to-open-inbox. Best-effort — never blocks the UI.
+  void _registerPush() {
+    if (!mounted) return;
+    ref.read(pushMessagingProvider).ensureRegistered(
+          ref.read(apiClientProvider),
+          onOpenInbox: () {
+            if (mounted) context.push(Routes.inbox);
+          },
+        );
   }
 
   /// On startup: if Android Private DNS is ON, show a BLOCKING dialog that the

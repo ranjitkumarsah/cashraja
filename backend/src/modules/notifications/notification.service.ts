@@ -109,19 +109,70 @@ export class NotificationService implements NotificationHook {
       this.logger.error(`failed to load fcm tokens for ${input.userId}: ${(err as Error).message}`);
       return;
     }
-    await Promise.all(
-      tokens.map((t) =>
-        this.fcm
-          .send({ token: t.token, title: input.title, body: input.body, data: input.data })
-          .catch((err: unknown) =>
-            this.logger.warn(
-              `fcm send failed (token ${t.token.slice(0, 6)}…): ${
-                err instanceof Error ? err.message : String(err)
-              }`,
-            ),
-          ),
-      ),
+    await this.sendToTokens(
+      tokens.map((t) => t.token),
+      input,
     );
+  }
+
+  /**
+   * FCM-only push to every registered token belonging to any of `userIds`
+   * (admin broadcast). Loads all tokens in one query and prunes invalid ones.
+   * No inbox rows — the caller writes those. Never throws.
+   */
+  async pushMany(userIds: string[], input: Omit<NotifyInput, 'userId'>): Promise<void> {
+    if (userIds.length === 0) return;
+    let tokens: Array<{ token: string }>;
+    try {
+      tokens = await this.prisma.fcmToken.findMany({
+        where: { userId: { in: userIds } },
+        select: { token: true },
+      });
+    } catch (err) {
+      this.logger.error(`failed to load fcm tokens for broadcast: ${(err as Error).message}`);
+      return;
+    }
+    await this.sendToTokens(
+      tokens.map((t) => t.token),
+      input,
+    );
+  }
+
+  /**
+   * Send one message to a set of tokens, then prune any the driver reports as
+   * permanently invalid/expired (registration-token-not-registered etc.) so
+   * fcm_tokens stays clean. Best-effort — a driver failure never propagates.
+   */
+  private async sendToTokens(tokens: string[], input: Omit<NotifyInput, 'userId'>): Promise<void> {
+    if (tokens.length === 0) return;
+    const invalid: string[] = [];
+    await Promise.all(
+      tokens.map(async (token) => {
+        try {
+          const result = await this.fcm.send({
+            token,
+            title: input.title,
+            body: input.body,
+            data: input.data,
+          });
+          if (result?.invalidToken) invalid.push(token);
+        } catch (err) {
+          this.logger.warn(
+            `fcm send failed (token ${token.slice(0, 6)}…): ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        }
+      }),
+    );
+    if (invalid.length > 0) {
+      try {
+        await this.prisma.fcmToken.deleteMany({ where: { token: { in: invalid } } });
+        this.logger.log(`pruned ${invalid.length} invalid fcm token(s)`);
+      } catch (err) {
+        this.logger.warn(`failed to prune invalid fcm tokens: ${(err as Error).message}`);
+      }
+    }
   }
 
   // ─────────────────────── token registration ───────────────────────

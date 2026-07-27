@@ -17,6 +17,7 @@ import { ManualOffersPage } from './features/manual-offers/ManualOffersPage';
 import { InventoryPage } from './features/inventory/InventoryPage';
 import { ConfigPage } from './features/config/ConfigPage';
 import { AdminsPage } from './features/admins/AdminsPage';
+import { NotificationsPage } from './features/notifications/NotificationsPage';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -59,6 +60,7 @@ export function AppRoutes() {
           <Route element={<RequireRole role="super_admin" />}>
             <Route path="offers" element={<OffersPage />} />
             <Route path="inventory" element={<InventoryPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
             <Route path="config" element={<ConfigPage />} />
             <Route path="admins" element={<AdminsPage />} />
           </Route>

@@ -18,8 +18,13 @@ export interface FcmMessage {
   data?: Record<string, string>;
 }
 
+/** Outcome of a single push. `invalidToken` marks a token to prune from fcm_tokens. */
+export interface FcmSendResult {
+  invalidToken?: boolean;
+}
+
 export interface FcmDriver {
-  send(message: FcmMessage): Promise<void>;
+  send(message: FcmMessage): Promise<FcmSendResult>;
 }
 
 export const FCM_DRIVER = 'FCM_DRIVER';
@@ -29,23 +34,38 @@ export const FCM_DRIVER = 'FCM_DRIVER';
 export class ConsoleFcmDriver implements FcmDriver {
   private readonly logger = new Logger('FcmConsole');
 
-  async send(message: FcmMessage): Promise<void> {
+  async send(message: FcmMessage): Promise<FcmSendResult> {
     this.logger.log(
       `push → token=${maskToken(message.token)} title="${message.title}" body="${message.body}"`,
     );
+    return {};
   }
 }
 
 /** Test driver: records every send for assertions. */
 export class MockFcmDriver implements FcmDriver {
   readonly sent: FcmMessage[] = [];
+  /** tokens the driver should report as invalid (to exercise pruning). */
+  invalidTokens = new Set<string>();
 
-  async send(message: FcmMessage): Promise<void> {
+  async send(message: FcmMessage): Promise<FcmSendResult> {
     this.sent.push(message);
+    return this.invalidTokens.has(message.token) ? { invalidToken: true } : {};
   }
 }
 
 const FCM_APP_NAME = 'cash-raja-fcm';
+
+/**
+ * firebase-admin messaging error codes that mean the token is permanently dead
+ * (uninstalled app / expired / malformed) and should be pruned from fcm_tokens.
+ */
+const INVALID_TOKEN_CODES = new Set<string>([
+  'messaging/registration-token-not-registered',
+  'messaging/invalid-registration-token',
+  'messaging/invalid-argument',
+  'messaging/mismatched-credential',
+]);
 
 /**
  * Real driver (NEEDS_CREDENTIALS). Reuses the firebase-admin app initialized for
@@ -55,18 +75,32 @@ const FCM_APP_NAME = 'cash-raja-fcm';
  */
 @Injectable()
 export class FirebaseFcmDriver implements FcmDriver {
+  private readonly logger = new Logger('FcmFirebase');
   private app: admin.app.App | null = null;
 
   constructor(private readonly config: ConfigService) {}
 
-  async send(message: FcmMessage): Promise<void> {
-    await this.getApp()
-      .messaging()
-      .send({
-        token: message.token,
-        notification: { title: message.title, body: message.body },
-        data: message.data,
-      });
+  async send(message: FcmMessage): Promise<FcmSendResult> {
+    try {
+      await this.getApp()
+        .messaging()
+        .send({
+          token: message.token,
+          notification: { title: message.title, body: message.body },
+          data: message.data,
+        });
+      return {};
+    } catch (err) {
+      const code = (err as { code?: string; errorInfo?: { code?: string } }).code
+        ?? (err as { errorInfo?: { code?: string } }).errorInfo?.code
+        ?? '';
+      if (INVALID_TOKEN_CODES.has(code)) {
+        // Permanently dead token — signal the caller to prune it (not an error).
+        return { invalidToken: true };
+      }
+      // Transient/other failure: surface so the caller logs it and moves on.
+      throw err;
+    }
   }
 
   private getApp(): admin.app.App {

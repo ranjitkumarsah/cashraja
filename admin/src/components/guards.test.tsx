@@ -108,6 +108,7 @@ describe('role gating (RBAC matrix)', () => {
       'Fraud',
       'Feedback',
       'Manual offers',
+      'Send notification',
       'Config',
       'Admins',
     ]);

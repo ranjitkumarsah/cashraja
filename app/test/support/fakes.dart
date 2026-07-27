@@ -8,6 +8,7 @@ import 'package:cashraja/core/api/models/feedback.dart';
 import 'package:cashraja/core/api/models/game.dart';
 import 'package:cashraja/core/api/models/gift_card.dart';
 import 'package:cashraja/core/api/models/manual_offer.dart';
+import 'package:cashraja/core/api/models/notification.dart';
 import 'package:cashraja/core/api/models/offer.dart';
 import 'package:cashraja/core/api/models/redemption.dart';
 import 'package:cashraja/core/api/models/referral.dart';
@@ -50,6 +51,9 @@ class FakeApiClient extends ApiClient {
     this.onClaimBonus,
     this.adRewardStateData,
     this.onClaimAdReward,
+    this.notificationsPages,
+    this.onRegisterFcmToken,
+    this.onMarkNotificationRead,
   }) : super(
           store: InMemoryTokenStore(),
           onSessionExpired: _noop,
@@ -88,6 +92,12 @@ class FakeApiClient extends ApiClient {
       onClaimBonus;
   final AdRewardState? adRewardStateData;
   final AdRewardResult Function()? onClaimAdReward;
+
+  /// Inbox pages returned by successive [notifications] calls (page 0, 1, …).
+  final List<NotificationPage>? notificationsPages;
+  final void Function(String token)? onRegisterFcmToken;
+  final void Function(String id)? onMarkNotificationRead;
+  int _notifCall = 0;
 
   @override
   Future<WalletSummary> wallet() async =>
@@ -341,6 +351,29 @@ class FakeApiClient extends ApiClient {
       attemptsRemaining: 0,
     );
   }
+
+  @override
+  Future<NotificationPage> notifications({String? cursor, int limit = 20}) async {
+    final List<NotificationPage>? pages = notificationsPages;
+    if (pages == null || pages.isEmpty) {
+      return const NotificationPage(
+        notifications: <AppNotification>[],
+        unreadCount: 0,
+        nextCursor: null,
+      );
+    }
+    final int i = _notifCall < pages.length ? _notifCall : pages.length - 1;
+    _notifCall++;
+    return pages[i];
+  }
+
+  @override
+  Future<void> registerFcmToken(String token) async =>
+      onRegisterFcmToken?.call(token);
+
+  @override
+  Future<void> markNotificationRead(String id) async =>
+      onMarkNotificationRead?.call(id);
 
   @override
   Future<AdRewardState> adRewardState() async =>

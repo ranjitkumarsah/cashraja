@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- H8: runtime notification permission (Android 13+). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="Cash Raja"
         android:name="${applicationName}"
@@ -32,6 +34,14 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="${admobAppId}" />
+        <!-- H8: FCM default notification icon (white silhouette) + channel. The
+             channel id must match `cash_raja_default` created in push_messaging.dart. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_coin" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="cash_raja_default" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

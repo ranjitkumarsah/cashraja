@@ -17,6 +17,7 @@ import '../../../core/widgets/gradient_background.dart';
 import '../../../core/widgets/streak_flame.dart';
 import '../../ads/ad_reward_controller.dart';
 import '../../ads/rewarded_ad_service.dart';
+import '../../notifications/presentation/notifications_controller.dart';
 import '../../streak/presentation/streak_controller.dart';
 import '../../streak/presentation/streak_sheet.dart';
 import '../../wallet/presentation/ledger_tile.dart';
@@ -173,6 +174,8 @@ class _TopBar extends StatelessWidget {
               ),
         ),
         const Spacer(),
+        const _InboxBell(),
+        const SizedBox(width: 10),
         Material(
           color: Colors.transparent,
           child: InkWell(
@@ -208,6 +211,57 @@ class _TopBar extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Bell entry point to the in-app inbox (H8), with an unread-count badge.
+class _InboxBell extends ConsumerWidget {
+  const _InboxBell();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final int unread = ref.watch(unreadCountProvider);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => context.push(Routes.inbox),
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: <Widget>[
+              const Icon(Icons.notifications_rounded,
+                  color: RajaColors.textSecondary, size: 26),
+              if (unread > 0)
+                Positioned(
+                  right: -4,
+                  top: -4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    constraints: const BoxConstraints(minWidth: 16),
+                    decoration: BoxDecoration(
+                      color: RajaColors.rose,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: RajaColors.indigoDeep, width: 1.5),
+                    ),
+                    child: Text(
+                      unread > 99 ? '99+' : '$unread',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

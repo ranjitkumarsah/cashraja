@@ -367,6 +367,7 @@ model Admin {
   resolvedFeedback    Feedback[]
   createdManualOffers ManualOffer[]
   reviewedManualOfferSubmissions ManualOfferSubmission[]
+  sentBroadcasts      NotificationBroadcast[]
 
   @@map("admins")
 }
@@ -509,6 +510,27 @@ model FcmToken {
 
   @@index([userId])
   @@map("fcm_tokens")
+}
+
+/**
+ * H8 — admin broadcast history. One row per admin-composed broadcast (to all
+ * users, or a specific list). The per-user inbox rows are ordinary Notification
+ * records; this table is the audit/history of who sent what to whom.
+ */
+model NotificationBroadcast {
+  id             String   @id @default(uuid()) @db.Uuid
+  title          String   @map("title")
+  body           String   @map("body")
+  // 'all' | 'users'
+  audienceType   String   @map("audience_type")
+  targetCount    Int      @map("target_count")
+  sentByAdminId  String   @map("sent_by_admin_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  sentBy Admin @relation(fields: [sentByAdminId], references: [id])
+
+  @@index([createdAt])
+  @@map("notification_broadcasts")
 }
 
 model ReferralEarning {

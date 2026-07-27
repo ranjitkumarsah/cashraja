@@ -13,6 +13,7 @@ import '../../features/home/presentation/home_shell.dart';
 import '../../features/invite/presentation/invite_screen.dart';
 import '../../features/legal/legal_content.dart';
 import '../../features/legal/presentation/policy_screen.dart';
+import '../../features/notifications/presentation/inbox_screen.dart';
 import '../../features/rewards/presentation/rewards_brand_screen.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/tasks/presentation/manual_offers_screen.dart';
@@ -27,6 +28,7 @@ abstract class Routes {
   static const String spin = '/spin';
   static const String invite = '/invite';
   static const String feedback = '/feedback';
+  static const String inbox = '/inbox';
   static const String rewards = '/rewards';
   static const String manualOffers = '/manual-offers';
   static const String privacyPolicy = '/legal/privacy';
@@ -105,6 +107,10 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
       GoRoute(
         path: Routes.feedback,
         builder: (_, _) => const FeedbackScreen(),
+      ),
+      GoRoute(
+        path: Routes.inbox,
+        builder: (_, _) => const InboxScreen(),
       ),
       GoRoute(
         path: '${Routes.rewards}/brand/:brand',

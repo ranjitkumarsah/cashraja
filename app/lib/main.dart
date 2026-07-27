@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'bootstrap.dart';
+import 'features/notifications/data/push_messaging.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,6 +14,9 @@ Future<void> main() async {
 
   // Initialize Firebase; non-fatal in dev so the mock auth path still runs.
   await initFirebase();
+
+  // Register the FCM background handler before the app starts (H8).
+  await initPushBackgroundHandler();
 
   // Initialize AdMob (no-op under mock ads); non-fatal so the app always boots.
   await initMobileAds();

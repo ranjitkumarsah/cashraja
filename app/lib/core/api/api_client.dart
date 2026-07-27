@@ -10,6 +10,7 @@ import 'models/feedback.dart';
 import 'models/game.dart';
 import 'models/gift_card.dart';
 import 'models/manual_offer.dart';
+import 'models/notification.dart';
 import 'models/offer.dart';
 import 'models/redemption.dart';
 import 'models/referral.dart';
@@ -308,6 +309,33 @@ class ApiClient {
       data: <String, dynamic>{'reservation_id': reservationId},
     );
     return BonusPlayResult.fromJson(body);
+  }
+
+  // ---- Notifications inbox + FCM token (H8) ------------------------------
+
+  /// Keyset-paginated in-app inbox with the total unread count.
+  Future<NotificationPage> notifications({String? cursor, int limit = 20}) async {
+    final Map<String, dynamic> body = await _get(
+      '/notifications',
+      query: <String, dynamic>{
+        'cursor': ?cursor,
+        'limit': limit,
+      },
+    );
+    return NotificationPage.fromJson(body);
+  }
+
+  /// Register (upsert) this device's FCM push token. Returns 204; body ignored.
+  Future<void> registerFcmToken(String token) async {
+    await _post(
+      '/notifications/register-token',
+      data: <String, dynamic>{'token': token},
+    );
+  }
+
+  /// Mark a single inbox notification read (owner-scoped, idempotent).
+  Future<void> markNotificationRead(String id) async {
+    await _post('/notifications/$id/read');
   }
 
   // ---- Watch-ads reward (G7) ---------------------------------------------
