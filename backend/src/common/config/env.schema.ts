@@ -9,6 +9,13 @@ export const envSchema = z
     NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(3000),
 
+    // Browser origins allowed to call the API with credentials (admin panel +
+    // landing). Comma list, exact origins (scheme+host+port), no trailing slash.
+    // Empty = same-origin only (no cross-origin browser access). The Flutter app
+    // is not a browser and is unaffected by CORS. Example (prod):
+    // https://cashraja.graduatedcoder.in
+    CORS_ORIGINS: z.string().default('http://localhost:5173'),
+
     DATABASE_URL: z
       .string()
       .url()

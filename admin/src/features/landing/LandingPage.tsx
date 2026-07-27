@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { CoinMark } from '../../components/CoinMark';
 import { FaqAccordion } from './FaqAccordion';
-import { getLandingStats } from './stats';
+import { useLandingStats } from './stats';
 
 // TODO: replace with the real Play Store URL once the app is published.
 //       Left as a placeholder so the CTA renders now; updated post-publish.
@@ -101,7 +101,7 @@ function PlayStoreCta({ className }: { className?: string }) {
 }
 
 export function LandingPage() {
-  const stats = getLandingStats();
+  const stats = useLandingStats();
 
   return (
     // Force the dark, premium palette for the whole landing regardless of the
@@ -142,17 +142,22 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Live stats */}
-      <section className="relative border-y border-white/10 bg-primary-950/60">
-        <div className="mx-auto grid w-full max-w-4xl grid-cols-1 divide-y divide-white/10 px-4 py-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:px-6">
-          {stats.map((stat) => (
-            <div key={stat.label} className="px-4 py-6 text-center">
-              <p className="coin-num text-3xl font-bold text-gold-300 sm:text-4xl">{stat.value}</p>
-              <p className="mt-1.5 text-sm font-medium text-indigo-200">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Live stats — real figures only; hidden until the API returns non-zero
+          numbers so a new site never shows fabricated or "0 players" counts. */}
+      {stats && (
+        <section className="relative border-y border-white/10 bg-primary-950/60">
+          <div className="mx-auto grid w-full max-w-4xl grid-cols-1 divide-y divide-white/10 px-4 py-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:px-6">
+            {stats.map((stat) => (
+              <div key={stat.label} className="px-4 py-6 text-center">
+                <p className="coin-num text-3xl font-bold text-gold-300 sm:text-4xl">
+                  {stat.value}
+                </p>
+                <p className="mt-1.5 text-sm font-medium text-indigo-200">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Features */}
       <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6">
