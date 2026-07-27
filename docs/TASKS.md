@@ -4,6 +4,15 @@
 Status legend: `[ ]` pending · `[~]` in progress · `[x]` done · `[!]` blocked
 Each task is independently executable and maps to a build phase (A–F) from IMPLEMENTATION_PLAN.md.
 
+> **⚠️ Checkboxes below are STALE — see [FINAL_REPORT.md](FINAL_REPORT.md) for the true state.**
+> A 3-way code audit (2026-07-27) confirmed **all of E, G, H and most of F are
+> DONE in code** despite unchecked boxes here (e.g. the E1 fraud engine is fully
+> built + spec'd). Phase F hardening completed this cycle: security headers +
+> CORS + `GET /api/public/stats` (landing wired to live stats); Docker/Fly/Caddy
+> deploy configs for both stacks + `DEPLOY.md`; `RELEASE.md`;
+> `PLAY_STORE_CHECKLIST.md`. Remaining = owner deploy actions (infra, signing,
+> store forms) + v2 offerwall integrations.
+
 ---
 
 ## A — Foundation
