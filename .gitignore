@@ -10,6 +10,11 @@ coverage/
 .env
 .env.*
 !.env.example
+# Deploy templates are safe to commit (placeholders only); real values are not.
+!.env.*.example
+
+# Built admin SPA dropped next to the prod compose file for Caddy to serve.
+deploy/admin-dist/
 
 # Flutter / Dart
 app/.dart_tool/

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../../lib/api/base';
 
 /** Headline stats shown on the marketing landing page.
  *
@@ -36,7 +37,7 @@ export function useLandingStats(): LandingStat[] | null {
   useEffect(() => {
     if (typeof fetch !== 'function') return;
     let alive = true;
-    fetch('/api/public/stats', { headers: { Accept: 'application/json' } })
+    fetch(`${API_BASE_URL}/public/stats`, { headers: { Accept: 'application/json' } })
       .then((res) => (res.ok ? (res.json() as Promise<PublicStats>) : Promise.reject(res.status)))
       .then((data) => {
         if (!alive) return;

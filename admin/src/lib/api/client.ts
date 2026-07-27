@@ -1,13 +1,14 @@
 import axios, { type AxiosError } from 'axios';
 import { tokenStore } from '../auth/token-store';
+import { API_BASE_URL } from './base';
 
 /**
- * Single axios instance for the whole panel. In dev, /api is proxied by Vite
- * to the backend (vite.config.ts); in production the panel is served behind
- * the same origin as the API, so the relative base works everywhere.
+ * Single axios instance for the whole panel. Base URL is API_BASE_URL: the
+ * same-origin `/api` (dev Vite proxy + same-host prod reverse-proxy) by default,
+ * or a cross-origin API when VITE_API_BASE_URL is set at build time (see base.ts).
  */
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   timeout: 15_000,
 });
 

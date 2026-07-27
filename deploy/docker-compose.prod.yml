@@ -1,0 +1,108 @@
+# Cash Raja — PRODUCTION stack (Hetzner VPS / any Docker host).
+# Postgres + Redis + backend API + Caddy (auto-HTTPS reverse proxy that also
+# serves the static admin+landing SPA). No cloud free-tier limits.
+#
+#   cd deploy && cp .env.prod.example .env.prod && edit secrets
+#   # build the admin SPA and drop it in ./admin-dist (see DEPLOY.md)
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+#
+# One-time super-admin seed (after the stack is healthy):
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml --profile seed run --rm seed
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    # No published port: only reachable on the internal compose network.
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_ADMIN_SECRET: ${JWT_ADMIN_SECRET}
+      AES_KEY: ${AES_KEY}
+      FIREBASE_VERIFIER: ${FIREBASE_VERIFIER}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON}
+      FCM_DRIVER: ${FCM_DRIVER}
+      OFFERWALL_NETWORKS: ${OFFERWALL_NETWORKS}
+      AD_NETWORKS: ${AD_NETWORKS}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL}
+      STREAK_REMINDER_ENABLED: ${STREAK_REMINDER_ENABLED}
+    # Not published to the host — Caddy proxies to it on the internal network.
+    expose:
+      - '3000'
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Built admin+landing SPA (see DEPLOY.md: `npm run build` → copy dist here).
+      - ./admin-dist:/srv/admin:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # One-shot: seed the super-admin + app_config defaults. Uses the builder stage
+  # (full deps incl. ts-node). Run once via --profile seed; never starts normally.
+  seed:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      target: builder
+    profiles: ['seed']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    command: ['npm', 'run', 'prisma:seed']
+
+volumes:
+  pgdata:
+  redisdata:
+  caddy_data:
+  caddy_config:

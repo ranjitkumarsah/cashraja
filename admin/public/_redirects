@@ -1,0 +1,5 @@
+# Cloudflare Pages / Netlify SPA fallback: serve index.html for any path that
+# isn't a real file, so client-side routes (/, /privacy, /admin/*, …) resolve.
+# The API is reached cross-origin via VITE_API_BASE_URL (see .env.production),
+# so no /api proxy rule is needed here.
+/*    /index.html   200
