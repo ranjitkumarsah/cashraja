@@ -237,22 +237,19 @@ class _InstructionsMarkdown extends StatelessWidget {
 
   final String data;
 
-  Future<void> _openLink(BuildContext context, String? rawHref) async {
+  Future<void> _openLink(
+    BuildContext context,
+    String? rawHref,
+    String linkText,
+  ) async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-    final String href = (rawHref ?? '').trim();
+    final Uri? uri = _resolveUri(rawHref, linkText);
     bool launched = false;
-    if (href.isNotEmpty) {
-      // Admins author links as Markdown, often without a scheme
-      // (e.g. "www.example.com" or "example.com/x"). A schemeless URI opens a
-      // blank browser tab, so normalise it to https:// first. Explicit schemes
-      // — https/http and mailto:/tel: — are launched as-is.
-      final Uri? uri = Uri.tryParse(_normalizeHref(href));
-      if (uri != null) {
-        try {
-          launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } catch (_) {
-          launched = false;
-        }
+    if (uri != null) {
+      try {
+        launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        launched = false;
       }
     }
     if (!launched) {
@@ -260,6 +257,24 @@ class _InstructionsMarkdown extends StatelessWidget {
         const SnackBar(content: Text('Couldn\'t open that link.')),
       );
     }
+  }
+
+  /// Picks the best URL to open. Admins sometimes author links with the URL in
+  /// the label and the target left as a bare "https://" (no address), which
+  /// opens a blank browser. So: try the target first, then fall back to the
+  /// link label — and for web links require a real host, so a bare "https://"
+  /// is skipped rather than opening blank.
+  static Uri? _resolveUri(String? rawHref, String linkText) {
+    for (final String candidate in <String>[rawHref ?? '', linkText]) {
+      final String t = candidate.trim();
+      if (t.isEmpty) continue;
+      final Uri? uri = Uri.tryParse(_normalizeHref(t));
+      if (uri == null || !uri.hasScheme) continue;
+      final bool isWeb = uri.scheme == 'http' || uri.scheme == 'https';
+      if (isWeb && uri.host.isEmpty) continue; // e.g. a bare "https://"
+      return uri;
+    }
+    return null;
   }
 
   /// Prepends `https://` to a schemeless href so it loads a real page. Hrefs
@@ -280,7 +295,7 @@ class _InstructionsMarkdown extends StatelessWidget {
       data: data,
       fitContent: true,
       onTapLink: (String text, String? href, String title) =>
-          _openLink(context, href),
+          _openLink(context, href, text),
       styleSheet: base.copyWith(
         p: const TextStyle(color: RajaColors.textPrimary, height: 1.4),
         a: const TextStyle(
