@@ -1,28 +1,41 @@
 import type { NextFunction, Request, Response } from 'express';
 
 /**
- * Baseline security-response headers for a JSON-only API. We serve no HTML, so
- * there is no need for the full helmet CSP machinery — this sets the handful of
- * headers that actually matter for an API and adds a dependency-free footprint.
+ * Baseline security-response headers. This server serves BOTH the JSON API and
+ * the bundled admin/landing SPA on one origin, so the CSP must allow the SPA to
+ * load its own assets while staying locked to same-origin.
  *
- * - `X-Content-Type-Options: nosniff` — never MIME-sniff a JSON body into HTML.
- * - `X-Frame-Options: DENY` + `frame-ancestors 'none'` — the API must never be
- *   framed (defence-in-depth clickjacking; irrelevant for JSON but cheap).
- * - `Referrer-Policy: no-referrer` — don't leak API URLs (which may carry ids)
- *   via the Referer header.
- * - `Cross-Origin-*-Policy` — isolate the API from cross-origin embedding.
- * - `Strict-Transport-Security` — force HTTPS for a full year (prod/staging
- *   only; behind TLS termination). Never sent in dev where there is no TLS.
+ * - `X-Content-Type-Options: nosniff` — never MIME-sniff a response.
+ * - `X-Frame-Options: DENY` + `frame-ancestors 'none'` — never framed (clickjacking).
+ * - `Referrer-Policy: no-referrer` — don't leak URLs (which may carry ids).
+ * - `Content-Security-Policy` — everything from `'self'`; the Vite build uses
+ *   external `/assets/*.js|css` (self) and React inline `style=` attributes
+ *   (hence `style-src 'unsafe-inline'`). `connect-src 'self'` covers the
+ *   same-origin API fetches. No external scripts/styles/fonts are used.
+ * - `Cross-Origin-*-Policy` — isolate from cross-origin embedding.
+ * - `Strict-Transport-Security` — force HTTPS for a year (prod/staging only).
  *
  * `x-powered-by` is stripped separately in main.ts via the Express instance.
  */
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
+
 export function securityHeaders(isTls: boolean) {
   return (_req: Request, res: Response, next: NextFunction): void => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-DNS-Prefetch-Control', 'off');
     res.setHeader('Referrer-Policy', 'no-referrer');
-    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+    res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
