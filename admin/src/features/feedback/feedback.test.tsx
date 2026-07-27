@@ -45,7 +45,7 @@ beforeEach(() => {
 describe('Feedback queue (reviewer-visible)', () => {
   it('renders the open queue with a submission subject and email', async () => {
     seedSession(reviewerAdmin);
-    renderApp('/feedback');
+    renderApp('/admin/feedback');
 
     expect(await screen.findByText('Coins missing after offer')).toBeInTheDocument();
     expect(screen.getByText('anita@cashraja.app')).toBeInTheDocument();
@@ -54,7 +54,7 @@ describe('Feedback queue (reviewer-visible)', () => {
   it('lets a reviewer reply to a submission', async () => {
     mockPost.mockReturnValue(ok({ ...ITEM, status: 'in_review', admin_reply: 'Looking into it' }));
     seedSession(reviewerAdmin);
-    renderApp('/feedback');
+    renderApp('/admin/feedback');
 
     await screen.findByText('Coins missing after offer');
     await userEvent.click(screen.getByRole('button', { name: 'View' }));
@@ -73,7 +73,7 @@ describe('Feedback queue (reviewer-visible)', () => {
   it('lets a reviewer resolve a submission', async () => {
     mockPost.mockReturnValue(ok({ ...ITEM, status: 'resolved' }));
     seedSession(reviewerAdmin);
-    renderApp('/feedback');
+    renderApp('/admin/feedback');
 
     await screen.findByText('Coins missing after offer');
     await userEvent.click(screen.getByRole('button', { name: 'View' }));

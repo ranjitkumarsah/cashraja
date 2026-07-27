@@ -45,7 +45,7 @@ beforeEach(() => {
 describe('Fraud queue (reviewer-visible)', () => {
   it('lets a reviewer see the flag queue with severity', async () => {
     seedSession(reviewerAdmin);
-    renderApp('/fraud');
+    renderApp('/admin/fraud');
 
     expect(await screen.findByText('Offer Velocity')).toBeInTheDocument();
     expect(screen.getByText('High')).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe('Fraud queue (reviewer-visible)', () => {
   it('resolves a flag with an action and note', async () => {
     mockPost.mockReturnValue(ok({ ...FLAG, status: 'resolved', resolution_action: 'ban_user' }));
     seedSession(reviewerAdmin);
-    renderApp('/fraud');
+    renderApp('/admin/fraud');
 
     await screen.findByText('Offer Velocity');
     await userEvent.click(screen.getByRole('button', { name: 'Resolve' }));

@@ -18,6 +18,12 @@ import { InventoryPage } from './features/inventory/InventoryPage';
 import { ConfigPage } from './features/config/ConfigPage';
 import { AdminsPage } from './features/admins/AdminsPage';
 import { NotificationsPage } from './features/notifications/NotificationsPage';
+import { PublicLayout } from './features/public/PublicLayout';
+import { LandingPage } from './features/landing/LandingPage';
+import { PrivacyPage } from './features/public/PrivacyPage';
+import { TermsPage } from './features/public/TermsPage';
+import { AboutPage } from './features/public/AboutPage';
+import { FaqPage } from './features/public/FaqPage';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -44,25 +50,39 @@ export function AppProviders({ children }: { children: ReactNode }) {
 export function AppRoutes() {
   return (
     <Routes>
-      <Route element={<RedirectIfAuthed />}>
-        <Route path="/login" element={<LoginPage />} />
+      {/* Public marketing site — no auth. */}
+      <Route element={<PublicLayout />}>
+        <Route index element={<LandingPage />} />
+        <Route path="privacy" element={<PrivacyPage />} />
+        <Route path="terms" element={<TermsPage />} />
+        <Route path="about" element={<AboutPage />} />
+        <Route path="faq" element={<FaqPage />} />
       </Route>
 
-      <Route element={<RequireAuth />}>
-        <Route element={<AppShell />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="users" element={<UsersPage />} />
-          <Route path="redemptions" element={<RedemptionsPage />} />
-          <Route path="fraud" element={<FraudPage />} />
-          <Route path="feedback" element={<FeedbackPage />} />
-          <Route path="manual-offers" element={<ManualOffersPage />} />
+      {/* Admin console — auth-gated, re-based under /admin. */}
+      <Route path="admin">
+        <Route element={<RedirectIfAuthed />}>
+          <Route path="login" element={<LoginPage />} />
+        </Route>
 
-          <Route element={<RequireRole role="super_admin" />}>
-            <Route path="offers" element={<OffersPage />} />
-            <Route path="inventory" element={<InventoryPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="config" element={<ConfigPage />} />
-            <Route path="admins" element={<AdminsPage />} />
+        <Route element={<RequireAuth />}>
+          <Route element={<AppShell />}>
+            {/* Dashboard is both the /admin index and /admin/dashboard (nav target). */}
+            <Route index element={<DashboardPage />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="redemptions" element={<RedemptionsPage />} />
+            <Route path="fraud" element={<FraudPage />} />
+            <Route path="feedback" element={<FeedbackPage />} />
+            <Route path="manual-offers" element={<ManualOffersPage />} />
+
+            <Route element={<RequireRole role="super_admin" />}>
+              <Route path="offers" element={<OffersPage />} />
+              <Route path="inventory" element={<InventoryPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="config" element={<ConfigPage />} />
+              <Route path="admins" element={<AdminsPage />} />
+            </Route>
           </Route>
         </Route>
       </Route>

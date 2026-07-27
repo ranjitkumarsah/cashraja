@@ -36,19 +36,19 @@ beforeEach(() => {
 });
 
 describe('route guards', () => {
-  it('redirects unauthenticated visitors from / to the login page', async () => {
-    renderApp('/');
+  it('redirects unauthenticated visitors from /admin to the login page', async () => {
+    renderApp('/admin/dashboard');
     expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
   });
 
   it('redirects unauthenticated visitors from deep links to the login page', async () => {
-    renderApp('/config');
+    renderApp('/admin/config');
     expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
   });
 
-  it('redirects an authenticated admin away from /login to the dashboard', async () => {
+  it('redirects an authenticated admin away from /admin/login to the dashboard', async () => {
     seedSession(superAdmin);
-    renderApp('/login');
+    renderApp('/admin/login');
     expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
   });
 
@@ -59,7 +59,7 @@ describe('route guards', () => {
     );
     tokenStore.reload();
 
-    renderApp('/');
+    renderApp('/admin/dashboard');
     expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
   });
 });
@@ -67,19 +67,19 @@ describe('route guards', () => {
 describe('role gating (RBAC matrix)', () => {
   it('blocks a reviewer from super-admin sections with a Not authorized card', async () => {
     seedSession(reviewerAdmin);
-    renderApp('/config');
+    renderApp('/admin/config');
     expect(await screen.findByRole('heading', { name: 'Not authorized' })).toBeInTheDocument();
   });
 
   it('lets a super-admin open super-admin sections', async () => {
     seedSession(superAdmin);
-    renderApp('/config');
+    renderApp('/admin/config');
     expect(await screen.findByRole('heading', { name: 'Config', level: 1 })).toBeInTheDocument();
   });
 
   it('shows the reviewer only Dashboard, Users, Redemptions and Fraud in the nav', async () => {
     seedSession(reviewerAdmin);
-    renderApp('/');
+    renderApp('/admin');
 
     const nav = await screen.findByRole('navigation', { name: 'Main navigation' });
     const links = within(nav).getAllByRole('link');
@@ -95,7 +95,7 @@ describe('role gating (RBAC matrix)', () => {
 
   it('shows the super-admin every section in the nav', async () => {
     seedSession(superAdmin);
-    renderApp('/');
+    renderApp('/admin');
 
     const nav = await screen.findByRole('navigation', { name: 'Main navigation' });
     const links = within(nav).getAllByRole('link');

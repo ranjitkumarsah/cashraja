@@ -20,7 +20,7 @@ export function Topbar() {
 
   const handleLogout = () => {
     signOut();
-    navigate('/login', { replace: true });
+    navigate('/admin/login', { replace: true });
   };
 
   return (

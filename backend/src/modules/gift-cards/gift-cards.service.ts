@@ -1,6 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { GiftCard, GiftCardBrand, InventoryStatus, Prisma } from '@prisma/client';
-import { AppConfigService } from '../../common/app-config/app-config.service';
+import {
+  AppConfigService,
+  GIFTCARD_COINS_PER_RUPEE_CONFIG,
+} from '../../common/app-config/app-config.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AUDIT_ACTIONS, writeAuditLog } from '../../common/audit/admin-audit';
 
@@ -39,27 +42,91 @@ export interface UpdateGiftCardInput {
  */
 @Injectable()
 export class GiftCardsService {
+  private readonly logger = new Logger(GiftCardsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly appConfig: AppConfigService,
   ) {}
 
   /**
-   * Public catalog (JWT): active, IN-STOCK cards only, cheapest first (H10).
-   * Sold-out denominations (available === 0) are dropped entirely so the store
-   * never shows phantom "out of stock" cards. Admin `listAll` still returns
-   * everything for management.
+   * Public catalog (JWT): INVENTORY-DRIVEN — the offered list is every
+   * (brand, denomination) that currently has unused stock, cheapest first
+   * (G0.2 / H10). Sold-out denominations (available === 0) never appear.
+   *
+   * The catalog table (`gift_cards`) is a supporting record, not the source of
+   * truth for what's offerable: for every in-stock denomination we backfill a
+   * catalog row if one is missing (e.g. inventory uploaded before the
+   * auto-create path existed, like amazon ₹5/₹10) so the denomination becomes
+   * offerable AND `redemptions.gift_card_id` always has a valid FK. This
+   * reconciliation is idempotent — running it on every store load is harmless.
+   * Admin `listAll` still returns the full catalog for management.
    */
   async listActive(): Promise<GiftCardView[]> {
-    const cards = await this.prisma.giftCard.findMany({
-      where: { isActive: true },
-      orderBy: [{ denomination: 'asc' }],
-    });
     const [stock, rate] = await Promise.all([
       this.unusedStockByCard(),
       this.appConfig.giftCardCoinsPerRupee(),
     ]);
-    return cards.map((c) => toView(c, rate, stock)).filter((v) => v.available > 0);
+    // Backfill catalog rows for any in-stock denomination that lacks one, then
+    // build the offered list from those rows joined to live stock counts.
+    const cards = await this.ensureCatalogForStock(stock);
+    return cards
+      .filter((c) => c.isActive)
+      .map((c) => toView(c, rate, stock))
+      .filter((v) => v.available > 0)
+      .sort((a, b) => a.denomination - b.denomination);
+  }
+
+  /**
+   * INVENTORY-DRIVEN reconciliation: for every (brand, denomination) that has
+   * unused stock, ensure an active `gift_cards` catalog row exists, creating any
+   * that are missing (is_active=true, coin_cost = reference-only default). This
+   * keeps the store truly inventory-driven and guarantees redemptions can always
+   * resolve a valid gift_card_id. Idempotent and safe under concurrency (a
+   * racing create that hits the unique constraint is ignored). Returns the
+   * catalog rows for the in-stock denominations.
+   */
+  private async ensureCatalogForStock(stock: Map<string, number>): Promise<GiftCard[]> {
+    const wanted = [...stock.keys()].map((key) => {
+      const sep = key.lastIndexOf(':');
+      return {
+        brand: key.slice(0, sep) as GiftCardBrand,
+        denomination: Number(key.slice(sep + 1)),
+      };
+    });
+    if (wanted.length === 0) return [];
+
+    const orFilter = wanted.map((w) => ({ brand: w.brand, denomination: w.denomination }));
+    const existing = await this.prisma.giftCard.findMany({ where: { OR: orFilter } });
+    const have = new Set(existing.map((c) => `${c.brand}:${c.denomination}`));
+    const missing = wanted.filter((w) => !have.has(`${w.brand}:${w.denomination}`));
+    if (missing.length === 0) return existing;
+
+    for (const m of missing) {
+      try {
+        await this.prisma.giftCard.create({
+          data: {
+            brand: m.brand,
+            denomination: m.denomination,
+            // Reference-only column; pricing always reads giftcard.coins_per_rupee.
+            coinCost: m.denomination * GIFTCARD_COINS_PER_RUPEE_CONFIG.fallback,
+            isActive: true,
+          },
+        });
+        this.logger.log(
+          `Backfilled catalog row for in-stock inventory: ${m.brand} ₹${m.denomination}`,
+        );
+      } catch (err) {
+        // Created concurrently by another request — the unique constraint on
+        // (brand, denomination) makes this a safe no-op.
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          continue;
+        }
+        throw err;
+      }
+    }
+    // Re-read so the just-created rows are included in the offered list.
+    return this.prisma.giftCard.findMany({ where: { OR: orFilter } });
   }
 
   /** Admin catalog: everything, incl. disabled cards. */

@@ -43,10 +43,7 @@ class ManualOffersScreen extends ConsumerWidget {
         body: GradientBackground(
           child: SafeArea(
             child: TabBarView(
-              children: <Widget>[
-                _OffersTab(),
-                _SubmissionsTab(),
-              ],
+              children: <Widget>[_OffersTab(), _SubmissionsTab()],
             ),
           ),
         ),
@@ -78,21 +75,21 @@ class _OffersTab extends ConsumerWidget {
           .submitProof(offer.id, proof);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Proof submitted — pending review.'),
-        ),
+        const SnackBar(content: Text('Proof submitted — pending review.')),
       );
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<ManualOffer>> offers =
-        ref.watch(manualOffersControllerProvider);
+    final AsyncValue<List<ManualOffer>> offers = ref.watch(
+      manualOffersControllerProvider,
+    );
     return RefreshIndicator(
       color: RajaColors.gold,
       backgroundColor: RajaColors.surface,
@@ -175,7 +172,10 @@ class _OfferCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               offer.description,
-              style: const TextStyle(color: RajaColors.textSecondary, height: 1.4),
+              style: const TextStyle(
+                color: RajaColors.textSecondary,
+                height: 1.4,
+              ),
             ),
           ],
           const SizedBox(height: 12),
@@ -191,8 +191,11 @@ class _OfferCard extends StatelessWidget {
               children: <Widget>[
                 const Row(
                   children: <Widget>[
-                    Icon(Icons.checklist_rounded,
-                        size: 16, color: RajaColors.gold),
+                    Icon(
+                      Icons.checklist_rounded,
+                      size: 16,
+                      color: RajaColors.gold,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'How to complete',
@@ -234,16 +237,22 @@ class _InstructionsMarkdown extends StatelessWidget {
 
   final String data;
 
-  Future<void> _openLink(BuildContext context, String? href) async {
+  Future<void> _openLink(BuildContext context, String? rawHref) async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-    final Uri? uri = (href == null || href.isEmpty) ? null : Uri.tryParse(href);
+    final String href = (rawHref ?? '').trim();
     bool launched = false;
-    if (uri != null) {
-      try {
-        launched =
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } catch (_) {
-        launched = false;
+    if (href.isNotEmpty) {
+      // Admins author links as Markdown, often without a scheme
+      // (e.g. "www.example.com" or "example.com/x"). A schemeless URI opens a
+      // blank browser tab, so normalise it to https:// first. Explicit schemes
+      // — https/http and mailto:/tel: — are launched as-is.
+      final Uri? uri = Uri.tryParse(_normalizeHref(href));
+      if (uri != null) {
+        try {
+          launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } catch (_) {
+          launched = false;
+        }
       }
     }
     if (!launched) {
@@ -253,10 +262,20 @@ class _InstructionsMarkdown extends StatelessWidget {
     }
   }
 
+  /// Prepends `https://` to a schemeless href so it loads a real page. Hrefs
+  /// that already carry a scheme (https, http, mailto, tel, …) are returned
+  /// unchanged so `mailto:`/`tel:` links keep working.
+  static String _normalizeHref(String href) {
+    final Uri? parsed = Uri.tryParse(href);
+    if (parsed != null && parsed.hasScheme) return href;
+    return 'https://$href';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final MarkdownStyleSheet base =
-        MarkdownStyleSheet.fromTheme(Theme.of(context));
+    final MarkdownStyleSheet base = MarkdownStyleSheet.fromTheme(
+      Theme.of(context),
+    );
     return MarkdownBody(
       data: data,
       fitContent: true,
@@ -349,7 +368,11 @@ class _CopyableCode extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.copy_rounded, size: 13, color: RajaColors.textMuted),
+            const Icon(
+              Icons.copy_rounded,
+              size: 13,
+              color: RajaColors.textMuted,
+            ),
           ],
         ),
       ),
@@ -461,7 +484,8 @@ class _ProofSheetState extends State<_ProofSheet> {
                   autofocus: true,
                   decoration: const InputDecoration(
                     labelText: 'Your proof',
-                    hintText: 'e.g. my username, the link I shared, what I did…',
+                    hintText:
+                        'e.g. my username, the link I shared, what I did…',
                     alignLabelWithHint: true,
                   ),
                   validator: (String? v) {
@@ -479,8 +503,10 @@ class _ProofSheetState extends State<_ProofSheet> {
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel',
-                      style: TextStyle(color: RajaColors.textMuted)),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: RajaColors.textMuted),
+                  ),
                 ),
               ],
             ),
@@ -494,8 +520,9 @@ class _ProofSheetState extends State<_ProofSheet> {
 class _SubmissionsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<ManualOfferSubmission>> mine =
-        ref.watch(myManualOfferSubmissionsProvider);
+    final AsyncValue<List<ManualOfferSubmission>> mine = ref.watch(
+      myManualOfferSubmissionsProvider,
+    );
     return RefreshIndicator(
       color: RajaColors.gold,
       backgroundColor: RajaColors.surface,
@@ -562,7 +589,10 @@ class _SubmissionCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             item.proofText,
-            style: const TextStyle(color: RajaColors.textSecondary, height: 1.4),
+            style: const TextStyle(
+              color: RajaColors.textSecondary,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 8),
           Row(
@@ -580,7 +610,10 @@ class _SubmissionCard extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 Formatters.dateTime(item.createdAt),
-                style: const TextStyle(color: RajaColors.textMuted, fontSize: 12),
+                style: const TextStyle(
+                  color: RajaColors.textMuted,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -593,7 +626,9 @@ class _SubmissionCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: RajaColors.rose.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: RajaColors.rose.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: RajaColors.rose.withValues(alpha: 0.4),
+                ),
               ),
               child: Text(
                 'Reason: ${item.reviewReason}',

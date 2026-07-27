@@ -56,14 +56,14 @@ beforeEach(() => {
 describe('Send notification screen', () => {
   it('is not accessible to reviewers (RBAC)', async () => {
     seedSession(reviewerAdmin);
-    renderApp('/notifications');
+    renderApp('/admin/notifications');
     expect(await screen.findByText('Not authorized')).toBeInTheDocument();
     expect(screen.queryByText('Compose')).not.toBeInTheDocument();
   });
 
   it('validates title and message before sending', async () => {
     seedSession(superAdmin);
-    renderApp('/notifications');
+    renderApp('/admin/notifications');
 
     await userEvent.click(await screen.findByRole('button', { name: /Send broadcast/ }));
 
@@ -88,7 +88,7 @@ describe('Send notification screen', () => {
       }),
     );
     seedSession(superAdmin);
-    renderApp('/notifications');
+    renderApp('/admin/notifications');
 
     await userEvent.type(await screen.findByLabelText('Title'), 'Hello');
     await userEvent.type(screen.getByLabelText('Message'), 'World news');
@@ -125,7 +125,7 @@ describe('Send notification screen', () => {
       }),
     );
     seedSession(superAdmin);
-    renderApp('/notifications');
+    renderApp('/admin/notifications');
 
     await userEvent.type(await screen.findByLabelText('Title'), 'Thanks');
     await userEvent.type(screen.getByLabelText('Message'), 'A little bonus');
@@ -147,7 +147,7 @@ describe('Send notification screen', () => {
 
   it('blocks a specific-users send with no recipients selected', async () => {
     seedSession(superAdmin);
-    renderApp('/notifications');
+    renderApp('/admin/notifications');
 
     await userEvent.type(await screen.findByLabelText('Title'), 'Empty');
     await userEvent.type(screen.getByLabelText('Message'), 'No recipients');

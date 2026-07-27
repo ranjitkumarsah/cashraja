@@ -54,7 +54,7 @@ beforeEach(() => {
 describe('login flow', () => {
   it('signs straight in when /login returns a direct session (no-TOTP branch)', async () => {
     mockPost.mockResolvedValueOnce(session());
-    renderApp('/login');
+    renderApp('/admin/login');
 
     await submitCredentials();
 
@@ -70,7 +70,7 @@ describe('login flow', () => {
     mockPost
       .mockResolvedValueOnce({ data: { totp_required: true, challenge_token: 'ct-totp' } })
       .mockResolvedValueOnce(session());
-    renderApp('/login');
+    renderApp('/admin/login');
 
     const user = await submitCredentials();
 
@@ -98,7 +98,7 @@ describe('login flow', () => {
         },
       })
       .mockResolvedValueOnce(session());
-    renderApp('/login');
+    renderApp('/admin/login');
 
     const user = await submitCredentials();
 
@@ -119,7 +119,7 @@ describe('login flow', () => {
 
   it('surfaces the backend message on a rejected password', async () => {
     mockPost.mockRejectedValueOnce(http401('Invalid credentials'));
-    renderApp('/login');
+    renderApp('/admin/login');
 
     await submitCredentials();
 
@@ -132,7 +132,7 @@ describe('login flow', () => {
     mockPost
       .mockResolvedValueOnce({ data: { totp_required: true, challenge_token: 'ct-totp' } })
       .mockRejectedValueOnce(http401('Invalid TOTP code'));
-    renderApp('/login');
+    renderApp('/admin/login');
 
     const user = await submitCredentials();
     await user.type(await screen.findByLabelText('Authentication code'), '000000');
@@ -144,7 +144,7 @@ describe('login flow', () => {
 
   it('validates the code shape client-side before calling the API', async () => {
     mockPost.mockResolvedValueOnce({ data: { totp_required: true, challenge_token: 'ct' } });
-    renderApp('/login');
+    renderApp('/admin/login');
 
     const user = await submitCredentials();
     await user.type(await screen.findByLabelText('Authentication code'), '12a');

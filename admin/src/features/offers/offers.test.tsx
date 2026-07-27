@@ -62,7 +62,7 @@ beforeEach(() => {
 describe('Offers screen', () => {
   it('renders offers and postback logs', async () => {
     seedSession(superAdmin);
-    renderApp('/offers');
+    renderApp('/admin/offers');
 
     expect(await screen.findByText('Install SuperApp')).toBeInTheDocument();
     expect(screen.getByText('txn-9')).toBeInTheDocument();
@@ -71,7 +71,7 @@ describe('Offers screen', () => {
   it('toggles an offer active flag', async () => {
     mockPatch.mockReturnValue(ok({ ...OFFER, is_active: false }));
     seedSession(superAdmin);
-    renderApp('/offers');
+    renderApp('/admin/offers');
 
     await screen.findByText('Install SuperApp');
     await userEvent.click(screen.getByRole('switch', { name: /Toggle Install SuperApp/ }));
@@ -83,7 +83,7 @@ describe('Offers screen', () => {
   it('edits the coin reward inline', async () => {
     mockPatch.mockReturnValue(ok({ ...OFFER, coin_reward: 750 }));
     seedSession(superAdmin);
-    renderApp('/offers');
+    renderApp('/admin/offers');
 
     await screen.findByText('Install SuperApp');
     await userEvent.click(screen.getByRole('button', { name: '500' }));
@@ -99,7 +99,7 @@ describe('Offers screen', () => {
 
   it('expands a postback row to reveal the raw payload', async () => {
     seedSession(superAdmin);
-    renderApp('/offers');
+    renderApp('/admin/offers');
 
     await screen.findByText('txn-9');
     await userEvent.click(screen.getByText('txn-9'));

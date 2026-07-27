@@ -6,9 +6,45 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:url_launcher_platform_interface/link.dart';
+import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 import 'support/fakes.dart';
 import 'support/harness.dart';
+
+/// Records the URLs passed to `launchUrl` so a test can assert normalisation.
+class _RecordingUrlLauncher extends UrlLauncherPlatform
+    with MockPlatformInterfaceMixin {
+  final List<String> launched = <String>[];
+
+  @override
+  final LinkDelegate? linkDelegate = null;
+
+  @override
+  Future<bool> canLaunch(String url) async => true;
+
+  @override
+  Future<bool> launch(
+    String url, {
+    required bool useSafariVC,
+    required bool useWebView,
+    required bool enableJavaScript,
+    required bool enableDomStorage,
+    required bool universalLinksOnly,
+    required Map<String, String> headers,
+    String? webOnlyWindowName,
+  }) async {
+    launched.add(url);
+    return true;
+  }
+
+  @override
+  Future<bool> launchUrl(String url, LaunchOptions options) async {
+    launched.add(url);
+    return true;
+  }
+}
 
 void main() {
   testWidgets('Offers tab shows instructions, reward, and a submit action',
@@ -102,6 +138,44 @@ void main() {
 
     expect(copied, 'RAJA50');
     expect(find.text('Copied "RAJA50" to clipboard'), findsOneWidget);
+  });
+
+  testWidgets('A schemeless instruction link is launched as https://…',
+      (tester) async {
+    final _RecordingUrlLauncher launcher = _RecordingUrlLauncher();
+    final UrlLauncherPlatform previous = UrlLauncherPlatform.instance;
+    UrlLauncherPlatform.instance = launcher;
+    addTearDown(() => UrlLauncherPlatform.instance = previous);
+
+    await pumpApp(
+      tester,
+      const ManualOffersScreen(),
+      overrides: <Override>[
+        apiClientProvider.overrideWithValue(
+          FakeApiClient(
+            manualOffersData: const <ManualOffer>[
+              ManualOffer(
+                id: 'o1',
+                title: 'Visit the promo page',
+                description: '',
+                // Admin typed a schemeless URL — the old code opened a blank tab.
+                // The whole paragraph is the link so the tap lands on it.
+                instructions: '[our site](www.example.com)',
+                coinReward: 40,
+                mySubmissionStatus: null,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.textContaining('our site'));
+    await tester.pumpAndSettle();
+
+    // The schemeless href is normalised to an https URL before launching.
+    expect(launcher.launched, <String>['https://www.example.com']);
   });
 
   testWidgets('An already-submitted offer shows Pending review, not a submit button',

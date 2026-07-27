@@ -30,12 +30,32 @@ class FakeGiftCardPrisma {
   inventory: FakeInv[] = [];
 
   readonly giftCard = {
-    findMany: (args: { where?: { isActive?: boolean } }): Promise<FakeCard[]> => {
+    findMany: (args: {
+      where?: {
+        isActive?: boolean;
+        OR?: Array<{ brand: GiftCardBrand; denomination: number }>;
+      };
+    }): Promise<FakeCard[]> => {
       let rows = [...this.cards];
       if (args.where?.isActive !== undefined) {
         rows = rows.filter((c) => c.isActive === args.where!.isActive);
       }
+      if (args.where?.OR !== undefined) {
+        const or = args.where.OR;
+        rows = rows.filter((c) =>
+          or.some((o) => o.brand === c.brand && o.denomination === c.denomination),
+        );
+      }
       return Promise.resolve(rows.sort((a, b) => a.coinCost - b.coinCost));
+    },
+    create: (args: { data: Omit<FakeCard, 'id' | 'createdAt'> }): Promise<FakeCard> => {
+      const card: FakeCard = {
+        id: `gen-${this.cards.length + 1}`,
+        createdAt: new Date(),
+        ...args.data,
+      };
+      this.cards.push(card);
+      return Promise.resolve(card);
     },
   };
 
@@ -107,6 +127,44 @@ describe('GiftCardsService availability (G0.2)', () => {
   it('returns an empty catalog when there is no unused inventory (H10)', async () => {
     const list = await service.listActive();
     expect(list).toEqual([]);
+  });
+
+  it('is INVENTORY-DRIVEN: backfills a catalog row for in-stock denominations with none', async () => {
+    // amazon ₹5 & ₹10 have unused stock but NO catalog row (uploaded before the
+    // auto-create path existed). They must still be offered — with a catalog row
+    // created so redemptions.gift_card_id stays valid.
+    prisma.cards = []; // no catalog rows at all
+    prisma.inventory = [
+      { brand: GiftCardBrand.amazon, denomination: 5, status: InventoryStatus.unused },
+      { brand: GiftCardBrand.amazon, denomination: 5, status: InventoryStatus.unused },
+      { brand: GiftCardBrand.amazon, denomination: 5, status: InventoryStatus.unused },
+      { brand: GiftCardBrand.amazon, denomination: 5, status: InventoryStatus.unused },
+      { brand: GiftCardBrand.amazon, denomination: 10, status: InventoryStatus.unused },
+    ];
+    const list = await service.listActive();
+
+    // Both denominations are offered, cheapest first, with correct availability.
+    expect(list.map((c) => c.denomination)).toEqual([5, 10]);
+    expect(list.find((c) => c.denomination === 5)!.available).toBe(4);
+    expect(list.find((c) => c.denomination === 10)!.available).toBe(1);
+    // coin_cost = denomination × config rate.
+    expect(list.find((c) => c.denomination === 5)!.coin_cost).toBe(5 * RATE);
+    expect(list.find((c) => c.denomination === 10)!.coin_cost).toBe(10 * RATE);
+    // A catalog row was backfilled for each (valid FK for future redemptions).
+    expect(prisma.cards).toHaveLength(2);
+    expect(prisma.cards.every((c) => c.isActive)).toBe(true);
+    // Every offered card carries a real catalog id.
+    expect(list.every((c) => c.id.length > 0)).toBe(true);
+  });
+
+  it('does not create duplicate catalog rows when they already exist (idempotent)', async () => {
+    prisma.inventory = [
+      { brand: GiftCardBrand.amazon, denomination: 50, status: InventoryStatus.unused },
+    ];
+    await service.listActive();
+    await service.listActive();
+    // Still only the two seeded rows — no backfill duplicates.
+    expect(prisma.cards).toHaveLength(2);
   });
 
   it('COMPUTES coin_cost as denomination × config rate (ignores the stored column)', async () => {

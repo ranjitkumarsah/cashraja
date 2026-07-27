@@ -50,7 +50,7 @@ describe('Dashboard', () => {
   it('renders stat tiles from the metrics API', async () => {
     mockGet.mockReturnValue(ok(METRICS));
     seedSession(superAdmin);
-    renderApp('/');
+    renderApp('/admin');
 
     expect(await screen.findByText('1,200')).toBeInTheDocument(); // DAU
     expect(screen.getByText('45,000')).toBeInTheDocument(); // coins issued
@@ -62,7 +62,7 @@ describe('Dashboard', () => {
   it('shows an error panel when metrics fail', async () => {
     mockGet.mockReturnValue(fail(500, 'Metrics unavailable'));
     seedSession(superAdmin);
-    renderApp('/');
+    renderApp('/admin');
 
     expect(await screen.findByText('Metrics unavailable', {}, { timeout: 4000 })).toBeInTheDocument();
   });

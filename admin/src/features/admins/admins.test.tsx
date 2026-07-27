@@ -43,7 +43,7 @@ beforeEach(() => {
 describe('Admins screen', () => {
   it('lists admins with role and TOTP state', async () => {
     seedSession(superAdmin);
-    renderApp('/admins');
+    renderApp('/admin/admins');
 
     expect(await screen.findByText('ops@cashraja.app')).toBeInTheDocument();
     expect(screen.getByText('Configured')).toBeInTheDocument();
@@ -51,7 +51,7 @@ describe('Admins screen', () => {
 
   it('validates the new-admin email', async () => {
     seedSession(superAdmin);
-    renderApp('/admins');
+    renderApp('/admin/admins');
 
     await userEvent.click(await screen.findByRole('button', { name: /New admin/ }));
     await userEvent.type(screen.getByLabelText('Email'), 'not-an-email');
@@ -74,7 +74,7 @@ describe('Admins screen', () => {
       }),
     );
     seedSession(superAdmin);
-    renderApp('/admins');
+    renderApp('/admin/admins');
 
     await userEvent.click(await screen.findByRole('button', { name: /New admin/ }));
     await userEvent.type(screen.getByLabelText('Email'), 'new@cashraja.app');

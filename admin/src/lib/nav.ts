@@ -26,17 +26,17 @@ const ALL: readonly AdminRole[] = ['reviewer', 'super_admin'];
 const SUPER: readonly AdminRole[] = ['super_admin'];
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ALL },
-  { to: '/users', label: 'Users', icon: Users, roles: ALL },
-  { to: '/redemptions', label: 'Redemptions', icon: Gift, roles: ALL },
-  { to: '/offers', label: 'Offers', icon: Megaphone, roles: SUPER },
-  { to: '/inventory', label: 'Inventory', icon: Package, roles: SUPER },
-  { to: '/fraud', label: 'Fraud', icon: ShieldAlert, roles: ALL },
-  { to: '/feedback', label: 'Feedback', icon: MessageSquare, roles: ALL },
-  { to: '/manual-offers', label: 'Manual offers', icon: ClipboardList, roles: ALL },
-  { to: '/notifications', label: 'Send notification', icon: Bell, roles: SUPER },
-  { to: '/config', label: 'Config', icon: Settings, roles: SUPER },
-  { to: '/admins', label: 'Admins', icon: UserCog, roles: SUPER },
+  { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ALL },
+  { to: '/admin/users', label: 'Users', icon: Users, roles: ALL },
+  { to: '/admin/redemptions', label: 'Redemptions', icon: Gift, roles: ALL },
+  { to: '/admin/offers', label: 'Offers', icon: Megaphone, roles: SUPER },
+  { to: '/admin/inventory', label: 'Inventory', icon: Package, roles: SUPER },
+  { to: '/admin/fraud', label: 'Fraud', icon: ShieldAlert, roles: ALL },
+  { to: '/admin/feedback', label: 'Feedback', icon: MessageSquare, roles: ALL },
+  { to: '/admin/manual-offers', label: 'Manual offers', icon: ClipboardList, roles: ALL },
+  { to: '/admin/notifications', label: 'Send notification', icon: Bell, roles: SUPER },
+  { to: '/admin/config', label: 'Config', icon: Settings, roles: SUPER },
+  { to: '/admin/admins', label: 'Admins', icon: UserCog, roles: SUPER },
 ];
 
 export function navItemsForRole(role: AdminRole): NavItem[] {

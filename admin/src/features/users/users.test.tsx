@@ -75,7 +75,7 @@ beforeEach(() => {
 describe('Users screen', () => {
   it('renders the users table with balances', async () => {
     seedSession(superAdmin);
-    renderApp('/users');
+    renderApp('/admin/users');
 
     expect(await screen.findByText('Anita')).toBeInTheDocument();
     expect(screen.getByText('anita@cashraja.app')).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe('Users screen', () => {
 
   it('hides adjust-balance and ban actions from reviewers', async () => {
     seedSession(reviewerAdmin);
-    renderApp('/users');
+    renderApp('/admin/users');
 
     await screen.findByText('Anita');
     await userEvent.click(screen.getByRole('button', { name: /Anita/ }));
@@ -98,7 +98,7 @@ describe('Users screen', () => {
   it('lets a super-admin adjust a balance with a reason', async () => {
     mockPost.mockReturnValue(ok({ balance_after: 5650, ledger_id: 'l2' }));
     seedSession(superAdmin);
-    renderApp('/users');
+    renderApp('/admin/users');
 
     await screen.findByText('Anita');
     await userEvent.click(screen.getByRole('button', { name: /Anita/ }));
@@ -117,7 +117,7 @@ describe('Users screen', () => {
 
   it('validates the adjust-balance form', async () => {
     seedSession(superAdmin);
-    renderApp('/users');
+    renderApp('/admin/users');
 
     await screen.findByText('Anita');
     await userEvent.click(screen.getByRole('button', { name: /Anita/ }));

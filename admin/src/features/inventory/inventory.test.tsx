@@ -49,7 +49,7 @@ beforeEach(() => {
 describe('Inventory screen', () => {
   it('shows stock levels and flags low stock', async () => {
     seedSession(superAdmin);
-    renderApp('/inventory');
+    renderApp('/admin/inventory');
 
     expect(await screen.findByText('Amazon · ₹100')).toBeInTheDocument();
     expect(screen.getByLabelText('Low stock')).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe('Inventory screen', () => {
   it('uploads codes and reports the insert/skip result', async () => {
     mockPost.mockReturnValue(ok({ inserted: 2, skipped: 1, total_submitted: 3 }));
     seedSession(superAdmin);
-    renderApp('/inventory');
+    renderApp('/admin/inventory');
 
     await screen.findByRole('heading', { name: 'Upload codes' });
     await userEvent.selectOptions(screen.getByLabelText('Brand'), 'amazon');
@@ -83,7 +83,7 @@ describe('Inventory screen', () => {
       return ok([ITEM]);
     });
     seedSession(superAdmin);
-    renderApp('/inventory');
+    renderApp('/admin/inventory');
 
     await userEvent.click(await screen.findByRole('button', { name: /Reveal/ }));
     await userEvent.click(await screen.findByRole('button', { name: 'Reveal code' }));

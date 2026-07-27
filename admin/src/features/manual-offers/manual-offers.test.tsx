@@ -68,7 +68,7 @@ beforeEach(() => {
 describe('Manual offers (admin)', () => {
   it('reviewer sees the review queue but NOT the manage-offers section (RBAC)', async () => {
     seedSession(reviewerAdmin);
-    renderApp('/manual-offers');
+    renderApp('/admin/manual-offers');
 
     expect(await screen.findByText('anita@cashraja.app')).toBeInTheDocument();
     expect(screen.getByText('Submission review')).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe('Manual offers (admin)', () => {
 
   it('super_admin sees the manage-offers section', async () => {
     seedSession(superAdmin);
-    renderApp('/manual-offers');
+    renderApp('/admin/manual-offers');
 
     expect(await screen.findByText('Manage offers')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'New offer' })).toBeInTheDocument();
@@ -90,7 +90,7 @@ describe('Manual offers (admin)', () => {
   it('reviewer approves a submission (credits the reward)', async () => {
     mockPost.mockReturnValue(ok({ ...SUBMISSION, status: 'approved' }));
     seedSession(reviewerAdmin);
-    renderApp('/manual-offers');
+    renderApp('/admin/manual-offers');
 
     await screen.findByText('anita@cashraja.app');
     await userEvent.click(screen.getByRole('button', { name: 'Review' }));
@@ -110,7 +110,7 @@ describe('Manual offers (admin)', () => {
   it('reviewer rejects a submission with a reason', async () => {
     mockPost.mockReturnValue(ok({ ...SUBMISSION, status: 'rejected', review_reason: 'Blurry' }));
     seedSession(reviewerAdmin);
-    renderApp('/manual-offers');
+    renderApp('/admin/manual-offers');
 
     await screen.findByText('anita@cashraja.app');
     await userEvent.click(screen.getByRole('button', { name: 'Review' }));
@@ -128,7 +128,7 @@ describe('Manual offers (admin)', () => {
   it('super_admin creates a manual offer', async () => {
     mockPost.mockReturnValue(ok({ ...OFFER, id: 'mo2', title: 'Join Telegram' }));
     seedSession(superAdmin);
-    renderApp('/manual-offers');
+    renderApp('/admin/manual-offers');
 
     await screen.findByText('Manage offers');
     await userEvent.click(screen.getByRole('button', { name: 'New offer' }));
@@ -153,7 +153,7 @@ describe('Manual offers (admin)', () => {
 
   it('instructions field renders a markdown toolbar + live preview (H7)', async () => {
     seedSession(superAdmin);
-    renderApp('/manual-offers');
+    renderApp('/admin/manual-offers');
 
     await screen.findByText('Manage offers');
     await userEvent.click(screen.getByRole('button', { name: 'New offer' }));

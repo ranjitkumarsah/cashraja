@@ -49,7 +49,7 @@ beforeEach(() => {
 describe('Redemptions queue', () => {
   it('renders the queue with user and gift-card details', async () => {
     seedSession(superAdmin);
-    renderApp('/redemptions');
+    renderApp('/admin/redemptions');
 
     expect(await screen.findByText('anita@cashraja.app')).toBeInTheDocument();
     expect(screen.getByText('Amazon')).toBeInTheDocument();
@@ -61,7 +61,7 @@ describe('Redemptions queue', () => {
       ok({ outcome: 'approved_pending', redemption: REDEMPTION, reason: 'No stock available' }),
     );
     seedSession(superAdmin);
-    renderApp('/redemptions');
+    renderApp('/admin/redemptions');
 
     await screen.findByText('anita@cashraja.app');
     await userEvent.click(screen.getByRole('button', { name: 'Approve' }));
@@ -73,7 +73,7 @@ describe('Redemptions queue', () => {
   it('requires a reason to reject and posts it', async () => {
     mockPost.mockReturnValue(ok({}));
     seedSession(superAdmin);
-    renderApp('/redemptions');
+    renderApp('/admin/redemptions');
 
     await screen.findByText('anita@cashraja.app');
     await userEvent.click(screen.getByRole('button', { name: 'Reject' }));
@@ -101,7 +101,7 @@ describe('Redemptions queue', () => {
 
   it('exports the queue as CSV', async () => {
     seedSession(superAdmin);
-    renderApp('/redemptions');
+    renderApp('/admin/redemptions');
 
     await screen.findByText('anita@cashraja.app');
     await userEvent.click(screen.getByRole('button', { name: /Export CSV/ }));

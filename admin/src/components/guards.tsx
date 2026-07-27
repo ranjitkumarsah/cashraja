@@ -10,17 +10,17 @@ export function RequireAuth() {
   const location = useLocation();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    return <Navigate to="/admin/login" replace state={{ from: location.pathname }} />;
   }
   return <Outlet />;
 }
 
-/** /login is pointless with a live session — bounce to the dashboard. */
+/** /admin/login is pointless with a live session — bounce to the dashboard. */
 export function RedirectIfAuthed() {
   const { isAuthenticated } = useAuth();
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/admin" replace />;
   }
   return <Outlet />;
 }

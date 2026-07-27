@@ -85,7 +85,7 @@ describe('theme toggle', () => {
   it('is wired into the topbar of the app shell', async () => {
     seedSession(superAdmin);
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/admin');
 
     const toggle = await screen.findByRole('button', { name: 'Switch to dark theme' });
     await user.click(toggle);

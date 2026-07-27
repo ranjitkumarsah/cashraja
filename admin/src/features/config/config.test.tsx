@@ -41,7 +41,7 @@ beforeEach(() => {
 describe('Config screen', () => {
   it('lists config keys with their version', async () => {
     seedSession(superAdmin);
-    renderApp('/config');
+    renderApp('/admin/config');
 
     expect(await screen.findByText('Coin Conversion')).toBeInTheDocument();
     expect(screen.getByText('v3')).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe('Config screen', () => {
   it('rejects invalid JSON and saves a valid object as a new version', async () => {
     mockPatch.mockReturnValue(ok({ ...CONFIG[0], version: 4 }));
     seedSession(superAdmin);
-    renderApp('/config');
+    renderApp('/admin/config');
 
     await screen.findByText('Coin Conversion');
     await userEvent.click(screen.getByRole('button', { name: 'Edit' }));

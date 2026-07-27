@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -23,11 +24,46 @@ class HomeShell extends ConsumerStatefulWidget {
   ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
+/// Window within which a second back press exits the app (Android).
+const Duration _kExitPromptWindow = Duration(seconds: 2);
+
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
   bool _dnsChecked = false;
 
+  /// Timestamp of the last back press while on the Home tab — powers the
+  /// "press back again to exit" pattern.
+  DateTime? _lastBackPress;
+
   void _go(int i) => setState(() => _index = i);
+
+  /// Android back handling for the top-level Home shell:
+  ///  • On a non-Home tab, back returns to the Home tab (never exits).
+  ///  • On the Home tab, the first back shows a "press back again to exit"
+  ///    snackbar and stays; a second back within [_kExitPromptWindow] exits.
+  /// Inner screens/tabs push their own routes and pop normally — this only
+  /// governs the shell's root.
+  Future<void> _handleBackPressed() async {
+    if (_index != 0) {
+      _go(0);
+      return;
+    }
+    final DateTime now = DateTime.now();
+    final DateTime? last = _lastBackPress;
+    if (last == null || now.difference(last) > _kExitPromptWindow) {
+      _lastBackPress = now;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Press back again to exit'),
+            duration: _kExitPromptWindow,
+          ),
+        );
+      return;
+    }
+    await SystemNavigator.pop();
+  }
 
   @override
   void initState() {
@@ -42,7 +78,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   /// FCM token, and wire tap-to-open-inbox. Best-effort — never blocks the UI.
   void _registerPush() {
     if (!mounted) return;
-    ref.read(pushMessagingProvider).ensureRegistered(
+    ref
+        .read(pushMessagingProvider)
+        .ensureRegistered(
           ref.read(apiClientProvider),
           onOpenInbox: () {
             if (mounted) context.push(Routes.inbox);
@@ -70,47 +108,53 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final List<Widget> tabs = <Widget>[
-      HomeTab(
-        onGoToTasks: () => _go(1),
-        onGoToWallet: () => _go(2),
-      ),
+      HomeTab(onGoToTasks: () => _go(1), onGoToWallet: () => _go(2)),
       const TasksScreen(),
       const WalletScreen(),
       const RewardsScreen(),
       const ProfileScreen(),
     ];
 
-    return Scaffold(
-      body: IndexedStack(index: _index, children: tabs),
-      bottomNavigationBar: DecoratedBox(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: RajaColors.border)),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _index,
-          onTap: _go,
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.task_alt_rounded),
-              label: 'Tasks',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.account_balance_wallet_rounded),
-              label: 'Wallet',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.card_giftcard_rounded),
-              label: 'Rewards',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded),
-              label: 'Profile',
-            ),
-          ],
+    return PopScope(
+      // We fully own the top-level back gesture: never auto-pop; route it
+      // through [_handleBackPressed] (tab-return, then double-back-to-exit).
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        _handleBackPressed();
+      },
+      child: Scaffold(
+        body: IndexedStack(index: _index, children: tabs),
+        bottomNavigationBar: DecoratedBox(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: RajaColors.border)),
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _index,
+            onTap: _go,
+            items: const <BottomNavigationBarItem>[
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_rounded),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.task_alt_rounded),
+                label: 'Tasks',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.account_balance_wallet_rounded),
+                label: 'Wallet',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.card_giftcard_rounded),
+                label: 'Rewards',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_rounded),
+                label: 'Profile',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -176,19 +220,23 @@ class _PrivateDnsBlockDialogState extends State<PrivateDnsBlockDialog> {
                   shape: BoxShape.circle,
                   gradient: RajaColors.goldGradient,
                 ),
-                child: const Icon(Icons.dns_rounded,
-                    size: 38, color: Color(0xFF1A1300)),
+                child: const Icon(
+                  Icons.dns_rounded,
+                  size: 38,
+                  color: Color(0xFF1A1300),
+                ),
               ),
               const SizedBox(height: 18),
-              Text('Turn off Private DNS',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Turn off Private DNS',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 12),
               const Text(
                 'Private DNS must be OFF to watch ads and earn rewards. Open '
                 'Settings, set Private DNS to "Off", then come back and re-check.',
                 textAlign: TextAlign.center,
-                style:
-                    TextStyle(color: RajaColors.textSecondary, height: 1.4),
+                style: TextStyle(color: RajaColors.textSecondary, height: 1.4),
               ),
               if (_stillOn) ...<Widget>[
                 const SizedBox(height: 12),
