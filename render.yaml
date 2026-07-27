@@ -1,0 +1,51 @@
+# Cash Raja — Render.com Blueprint (FREE tier, no credit card required).
+# One Docker web service = API + bundled admin panel + marketing landing.
+# Data stores stay external: Neon (Postgres) + Upstash (Redis).
+#
+# Setup: Render Dashboard → New → Blueprint → connect this repo. Render reads
+# this file and prompts for the `sync: false` secrets below. See docs/DEPLOY.md.
+services:
+  - type: web
+    name: cashraja-backend
+    runtime: docker
+    repo: https://github.com/ranjitkumarsah/cashraja
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: singapore # closest free Render region to India
+    plan: free
+    autoDeploy: true # redeploy on every push to main
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: POSTBACK_WORKER_ENABLED
+        value: "true"
+      - key: OFFERWALL_NETWORKS
+        value: ""
+      - key: AD_NETWORKS
+        value: ""
+      - key: STREAK_REMINDER_ENABLED
+        value: "true"
+      - key: FIREBASE_VERIFIER
+        value: firebase
+      - key: FCM_DRIVER
+        value: firebase
+      # Same-origin admin (bundled) needs no CORS; set for any future cross-origin.
+      - key: CORS_ORIGINS
+        value: https://cashraja-backend.onrender.com
+      # ── Secrets — entered in the dashboard, never committed ──
+      - key: DATABASE_URL # Neon pooled connection string (?sslmode=require)
+        sync: false
+      - key: REDIS_URL # Upstash rediss:// URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_ADMIN_SECRET
+        sync: false
+      - key: AES_KEY
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false

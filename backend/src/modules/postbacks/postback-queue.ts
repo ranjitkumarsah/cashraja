@@ -30,10 +30,14 @@ export const POSTBACK_JOB_OPTIONS = {
   removeOnFail: false,
 } as const;
 
-/** REDIS_URL → ioredis options (BullMQ needs maxRetriesPerRequest: null). */
+/**
+ * REDIS_URL → ioredis options (BullMQ needs maxRetriesPerRequest: null).
+ * A `rediss://` URL enables TLS — required by managed Redis like Upstash.
+ */
 export function redisConnectionOptions(redisUrl: string): RedisOptions {
   const url = new URL(redisUrl);
   const dbPath = url.pathname.replace(/^\//, '');
+  const isTls = url.protocol === 'rediss:';
   return {
     host: url.hostname,
     port: url.port !== '' ? Number(url.port) : 6379,
@@ -41,6 +45,9 @@ export function redisConnectionOptions(redisUrl: string): RedisOptions {
     password: url.password !== '' ? url.password : undefined,
     db: dbPath !== '' ? Number(dbPath) : 0,
     maxRetriesPerRequest: null,
+    // Upstash (and most managed Redis) terminate TLS; ioredis needs tls set to
+    // negotiate it. Empty object = default verification against the public CA.
+    ...(isTls ? { tls: {} } : {}),
   };
 }
 

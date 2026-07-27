@@ -46,8 +46,9 @@ RUN chmod +x ./backend-entrypoint.sh
 
 USER node
 EXPOSE 3000
+# Honors $PORT when the host injects one (Render sets it); falls back to 3000.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3000/healthz || exit 1
+  CMD wget -qO- "http://127.0.0.1:${PORT:-3000}/healthz" || exit 1
 
 # Applies pending migrations (idempotent) then starts the API.
 ENTRYPOINT ["./backend-entrypoint.sh"]
