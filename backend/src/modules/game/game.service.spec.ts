@@ -111,6 +111,19 @@ describe('GameService', () => {
       expiresAt: new Date(Date.now() + 60_000),
     });
 
+  it('exposes the coins-per-round config per difficulty (H9)', async () => {
+    expect(await service.getConfig()).toEqual({
+      coins_per_round: { easy: 5, medium: 10, hard: 20 },
+    });
+  });
+
+  it('config reflects admin-edited coins_per_round (H9)', async () => {
+    config.set('game.coins_per_round', { easy: 7, medium: 14, hard: 28 });
+    expect(await service.getConfig()).toEqual({
+      coins_per_round: { easy: 7, medium: 14, hard: 28 },
+    });
+  });
+
   it('round-start issues a round with a future expiry and decrements remaining', async () => {
     const result = await service.roundStart(userId, GameDifficulty.medium);
     expect(result.round_id).toBeDefined();

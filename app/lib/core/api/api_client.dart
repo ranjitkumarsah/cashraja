@@ -248,6 +248,12 @@ class ApiClient {
 
   // ---- Game (D1) ---------------------------------------------------------
 
+  /// H9 — coins-per-round per difficulty, so the picker reflects admin config.
+  Future<GameConfig> gameConfig() async {
+    final Map<String, dynamic> body = await _get('/game/config');
+    return GameConfig.fromJson(body);
+  }
+
   Future<GameRound> startGameRound(GameDifficulty difficulty) async {
     final Map<String, dynamic> body = await _post(
       '/game/round-start',

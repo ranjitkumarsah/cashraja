@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:markdown/markdown.dart' as md;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/api/models/manual_offer.dart';
@@ -201,13 +205,9 @@ class _OfferCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  offer.instructions,
-                  style: const TextStyle(
-                    color: RajaColors.textPrimary,
-                    height: 1.4,
-                  ),
-                ),
+                // H7: instructions are authored as Markdown in admin — links
+                // (open externally), bold, inline code (tap to copy), lists.
+                _InstructionsMarkdown(data: offer.instructions),
               ],
             ),
           ),
@@ -221,6 +221,137 @@ class _OfferCard extends StatelessWidget {
           else
             _SubmittedBadge(status: offer.mySubmissionStatus ?? 'pending'),
         ],
+      ),
+    );
+  }
+}
+
+/// H7 — renders manual-offer instructions as Markdown in the Raja dark theme:
+/// gold underlined links that open in the external browser, bold, bullet /
+/// numbered lists, and inline `code` chips that copy to the clipboard on tap.
+class _InstructionsMarkdown extends StatelessWidget {
+  const _InstructionsMarkdown({required this.data});
+
+  final String data;
+
+  Future<void> _openLink(BuildContext context, String? href) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final Uri? uri = (href == null || href.isEmpty) ? null : Uri.tryParse(href);
+    bool launched = false;
+    if (uri != null) {
+      try {
+        launched =
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        launched = false;
+      }
+    }
+    if (!launched) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Couldn\'t open that link.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final MarkdownStyleSheet base =
+        MarkdownStyleSheet.fromTheme(Theme.of(context));
+    return MarkdownBody(
+      data: data,
+      fitContent: true,
+      onTapLink: (String text, String? href, String title) =>
+          _openLink(context, href),
+      styleSheet: base.copyWith(
+        p: const TextStyle(color: RajaColors.textPrimary, height: 1.4),
+        a: const TextStyle(
+          color: RajaColors.gold,
+          fontWeight: FontWeight.w700,
+          decoration: TextDecoration.underline,
+          decorationColor: RajaColors.gold,
+        ),
+        strong: const TextStyle(
+          color: RajaColors.textPrimary,
+          fontWeight: FontWeight.w800,
+        ),
+        em: const TextStyle(
+          color: RajaColors.textPrimary,
+          fontStyle: FontStyle.italic,
+        ),
+        listBullet: const TextStyle(color: RajaColors.textPrimary, height: 1.4),
+        code: const TextStyle(
+          color: RajaColors.gold,
+          fontFamily: 'monospace',
+          backgroundColor: Colors.transparent,
+        ),
+        codeblockDecoration: BoxDecoration(
+          color: RajaColors.surfaceHigh,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: RajaColors.border),
+        ),
+      ),
+      builders: <String, MarkdownElementBuilder>{
+        'code': _CopyableCodeBuilder(),
+      },
+    );
+  }
+}
+
+/// Renders `code` spans as tap-to-copy chips (H7). Handy for promo codes /
+/// usernames a user must paste elsewhere to complete the offer.
+class _CopyableCodeBuilder extends MarkdownElementBuilder {
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    return _CopyableCode(code: element.textContent);
+  }
+}
+
+class _CopyableCode extends StatelessWidget {
+  const _CopyableCode({required this.code});
+
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(6),
+      onTap: () async {
+        final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+        await Clipboard.setData(ClipboardData(text: code));
+        messenger.showSnackBar(
+          SnackBar(content: Text('Copied "$code" to clipboard')),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        decoration: BoxDecoration(
+          color: RajaColors.surfaceHigh,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: RajaColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Flexible(
+              child: Text(
+                code,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  color: RajaColors.gold,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.copy_rounded, size: 13, color: RajaColors.textMuted),
+          ],
+        ),
       ),
     );
   }

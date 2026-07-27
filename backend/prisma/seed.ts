@@ -1,28 +1,19 @@
 /**
- * Dev/staging seed (A2.4): super-admin, gift-card catalog (₹50/₹100/₹250),
- * app_config defaults. Idempotent — safe to re-run.
+ * Dev/staging seed (A2.4): super-admin + app_config defaults. Idempotent —
+ * safe to re-run.
  * Usage: npx prisma db seed   (requires a reachable DATABASE_URL)
+ *
+ * NOTE (H10): the gift-card catalog is NOT seeded here. Cards auto-create on
+ * inventory upload, so seeding placeholder ₹50/₹100/₹250 rows with zero stock
+ * would surface phantom "out of stock" cards in the store.
  */
-import { GiftCardBrand, OfferNetwork, PrismaClient } from '@prisma/client';
+import { OfferNetwork, PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 const SUPER_ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? 'admin@cashraja.local';
 const SUPER_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe!Dev123';
-
-// coin economy default: 1000 coins ≈ ₹10 → coin_cost = denomination * 100
-const CATALOG: Array<{ brand: GiftCardBrand; denomination: number }> = [
-  { brand: GiftCardBrand.amazon, denomination: 50 },
-  { brand: GiftCardBrand.amazon, denomination: 100 },
-  { brand: GiftCardBrand.amazon, denomination: 250 },
-  { brand: GiftCardBrand.flipkart, denomination: 50 },
-  { brand: GiftCardBrand.flipkart, denomination: 100 },
-  { brand: GiftCardBrand.flipkart, denomination: 250 },
-  { brand: GiftCardBrand.google_play, denomination: 50 },
-  { brand: GiftCardBrand.google_play, denomination: 100 },
-  { brand: GiftCardBrand.google_play, denomination: 250 },
-];
 
 const CONFIG_DEFAULTS: Array<{ key: string; value: object }> = [
   { key: 'game.daily_round_cap', value: { rounds: 20 } },
@@ -104,15 +95,6 @@ async function main(): Promise<void> {
     },
   });
   console.log(`Seeded super-admin: ${SUPER_ADMIN_EMAIL}`);
-
-  for (const { brand, denomination } of CATALOG) {
-    await prisma.giftCard.upsert({
-      where: { brand_denomination: { brand, denomination } },
-      update: {},
-      create: { brand, denomination, coinCost: denomination * 100, isActive: true },
-    });
-  }
-  console.log(`Seeded gift-card catalog: ${CATALOG.length} entries`);
 
   for (const { key, value } of CONFIG_DEFAULTS) {
     await prisma.appConfig.upsert({

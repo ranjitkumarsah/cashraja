@@ -38,7 +38,8 @@ const List<GiftCard> _catalog = <GiftCard>[
 ];
 
 void main() {
-  testWidgets('Store groups the catalog into one card per brand (H6 level 1)',
+  testWidgets(
+      'Store groups only IN-STOCK cards, one per brand, hiding sold-out (H10)',
       (tester) async {
     await pumpApp(
       tester,
@@ -53,16 +54,15 @@ void main() {
     // One brand tile each — NOT one tile per denomination.
     expect(find.text('Amazon'), findsOneWidget);
     expect(find.text('Flipkart'), findsOneWidget);
-    // Brand tile summarises the denominations (2 Amazon cards, from ₹50).
-    expect(find.text('2 cards · from ₹50'), findsOneWidget);
+    // The sold-out ₹100 Amazon card is excluded, so Amazon summarises 1 card.
+    expect(find.text('1 cards · from ₹50'), findsOneWidget);
     expect(find.text('1 cards · from ₹100'), findsOneWidget);
-    // The flat ₹-per-card grid is gone from the store landing.
-    expect(find.text('4 available'), findsNothing);
+    // No brand renders an "Out of stock" summary — sold-out brands are hidden.
+    expect(find.text('Out of stock'), findsNothing);
   });
 
-  testWidgets(
-      'Brand detail lists denominations with stock and disables sold-out redeem '
-      '(H6 level 2)', (tester) async {
+  testWidgets('Brand detail lists ONLY in-stock denominations (H10)',
+      (tester) async {
     await pumpApp(
       tester,
       const RewardsBrandScreen(brand: GiftCardBrand.amazon),
@@ -73,20 +73,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Both Amazon denominations show; the Flipkart card is filtered out.
+    // Only the in-stock ₹50 Amazon card shows; the sold-out ₹100 is filtered
+    // out, and the Flipkart card is filtered by brand.
     expect(find.text('₹50'), findsOneWidget);
-    expect(find.text('₹100'), findsOneWidget);
-
-    // Stock strings: in-stock count + sold-out marker.
+    expect(find.text('₹100'), findsNothing);
     expect(find.text('4 available'), findsOneWidget);
-    expect(find.text('Out of stock'), findsOneWidget);
 
-    // In-stock card has an enabled Redeem button; sold-out one is disabled.
+    // No sold-out affordance renders at all now.
+    expect(find.text('Out of stock'), findsNothing);
     final Finder redeem = find.widgetWithText(FilledButton, 'Redeem');
-    final Finder soldOut = find.widgetWithText(FilledButton, 'Sold out');
     expect(redeem, findsOneWidget);
-    expect(soldOut, findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Sold out'), findsNothing);
     expect(tester.widget<FilledButton>(redeem).onPressed, isNotNull);
-    expect(tester.widget<FilledButton>(soldOut).onPressed, isNull);
   });
 }

@@ -89,27 +89,34 @@ describe('GiftCardsService availability (G0.2)', () => {
     ];
   });
 
-  it('reports unused-code counts as `available` per brand+denomination', async () => {
+  it('returns only IN-STOCK cards and reports unused-code counts as `available` (H10)', async () => {
     prisma.inventory = [
       { brand: GiftCardBrand.amazon, denomination: 50, status: InventoryStatus.unused },
       { brand: GiftCardBrand.amazon, denomination: 50, status: InventoryStatus.unused },
       { brand: GiftCardBrand.amazon, denomination: 50, status: InventoryStatus.issued },
-      // no unused ₹100 stock
+      // no unused ₹100 stock — must be dropped from the public catalog (H10)
       { brand: GiftCardBrand.amazon, denomination: 100, status: InventoryStatus.reserved },
     ];
     const list = await service.listActive();
     expect(list.find((c) => c.id === 'c50')!.available).toBe(2);
-    expect(list.find((c) => c.id === 'c100')!.available).toBe(0);
+    // The sold-out ₹100 card is omitted entirely (not returned with available: 0).
+    expect(list.find((c) => c.id === 'c100')).toBeUndefined();
+    expect(list.every((c) => c.available > 0)).toBe(true);
   });
 
-  it('defaults `available` to 0 when there is no inventory', async () => {
+  it('returns an empty catalog when there is no unused inventory (H10)', async () => {
     const list = await service.listActive();
-    expect(list.every((c) => c.available === 0)).toBe(true);
+    expect(list).toEqual([]);
   });
 
   it('COMPUTES coin_cost as denomination × config rate (ignores the stored column)', async () => {
     // Stored coinCost columns are deliberately wrong (999) — pricing must not use them.
     prisma.cards = prisma.cards.map((c) => ({ ...c, coinCost: 999 }));
+    // Give both denominations unused stock so they appear in the in-stock catalog.
+    prisma.inventory = [
+      { brand: GiftCardBrand.amazon, denomination: 50, status: InventoryStatus.unused },
+      { brand: GiftCardBrand.amazon, denomination: 100, status: InventoryStatus.unused },
+    ];
     const list = await service.listActive();
     expect(list.find((c) => c.id === 'c50')!.coin_cost).toBe(50 * RATE); // 5000
     expect(list.find((c) => c.id === 'c100')!.coin_cost).toBe(100 * RATE); // 10000

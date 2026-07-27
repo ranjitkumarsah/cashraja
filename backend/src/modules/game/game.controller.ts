@@ -1,9 +1,14 @@
-import { Body, Controller, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthenticatedUser, CurrentUser, JwtAuthGuard } from '../../common/auth';
 import { RoundCompleteDto } from './dto/round-complete.dto';
 import { RoundStartDto } from './dto/round-start.dto';
-import { GameService, RoundCompleteResult, RoundStartResult } from './game.service';
+import {
+  GameConfigResult,
+  GameService,
+  RoundCompleteResult,
+  RoundStartResult,
+} from './game.service';
 
 /** D1 — server-authoritative game rounds, JWT-guarded. */
 @ApiTags('game')
@@ -11,6 +16,12 @@ import { GameService, RoundCompleteResult, RoundStartResult } from './game.servi
 @UseGuards(JwtAuthGuard)
 export class GameController {
   constructor(private readonly game: GameService) {}
+
+  /** H9 — coins-per-round per difficulty, so the app's picker reflects config. */
+  @Get('config')
+  config(): Promise<GameConfigResult> {
+    return this.game.getConfig();
+  }
 
   @Post('round-start')
   roundStart(

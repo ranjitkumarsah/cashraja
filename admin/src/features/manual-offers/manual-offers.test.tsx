@@ -150,4 +150,28 @@ describe('Manual offers (admin)', () => {
       coin_reward: 40,
     });
   });
+
+  it('instructions field renders a markdown toolbar + live preview (H7)', async () => {
+    seedSession(superAdmin);
+    renderApp('/manual-offers');
+
+    await screen.findByText('Manage offers');
+    await userEvent.click(screen.getByRole('button', { name: 'New offer' }));
+
+    // The formatting toolbar is present.
+    expect(screen.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Link' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Code' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Numbered list' })).toBeInTheDocument();
+
+    // Typing markdown updates the live preview: **bold** → <strong>.
+    await userEvent.type(screen.getByLabelText('Instructions'), 'Use **NOW** today');
+    const bold = await screen.findByText('NOW');
+    expect(bold.tagName).toBe('STRONG');
+
+    // The Code toolbar button inserts an inline-code span, rendered as <code>.
+    await userEvent.click(screen.getByRole('button', { name: 'Code' }));
+    const code = await screen.findByText('code');
+    expect(code.tagName).toBe('CODE');
+  });
 });

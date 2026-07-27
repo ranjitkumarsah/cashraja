@@ -10,6 +10,7 @@ import '../../../core/providers.dart';
 import '../../../core/theme/raja_colors.dart';
 import '../../../core/theme/raja_theme.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/coin_balance.dart';
 import '../../../core/widgets/coin_glyph.dart';
 import '../../../core/widgets/gradient_background.dart';
@@ -17,6 +18,12 @@ import '../../../core/widgets/primary_button.dart';
 import '../../ads/banner_ad_widget.dart';
 import '../../ads/claim_reward_flow.dart';
 import '../../wallet/presentation/wallet_controllers.dart';
+
+/// H9 — coins-per-round per difficulty from `GET /api/game/config`, so the
+/// difficulty picker shows each tier's real (admin-set) reward.
+final gameConfigProvider = FutureProvider.autoDispose<GameConfig>((Ref ref) {
+  return ref.read(apiClientProvider).gameConfig();
+});
 
 /// Lifecycle of a single play session.
 enum _Phase {
@@ -296,40 +303,41 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 }
 
-class _DifficultyPicker extends StatelessWidget {
+class _DifficultyPicker extends ConsumerWidget {
   const _DifficultyPicker({super.key, required this.onPick});
 
   final void Function(GameDifficulty) onPick;
 
-  static const Map<GameDifficulty, int> _reward = <GameDifficulty, int>{
-    GameDifficulty.easy: 5,
-    GameDifficulty.medium: 10,
-    GameDifficulty.hard: 20,
-  };
-
   @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: <Widget>[
-        Text(
-          'Pick your challenge',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Spot the number to clear each round. Harder tiers pay out more.',
-          style: TextStyle(color: RajaColors.textSecondary, height: 1.4),
-        ),
-        const SizedBox(height: 20),
-        for (final GameDifficulty d in GameDifficulty.values) ...<Widget>[
-          _DifficultyTile(
-            difficulty: d,
-            reward: _reward[d]!,
-            onTap: () => onPick(d),
+  Widget build(BuildContext context, WidgetRef ref) {
+    // H9: the per-difficulty reward comes from server config, never a hardcoded
+    // map, so admin edits to `game.coins_per_round` are reflected here.
+    final AsyncValue<GameConfig> config = ref.watch(gameConfigProvider);
+    return AsyncValueView<GameConfig>(
+      value: config,
+      onRetry: () => ref.invalidate(gameConfigProvider),
+      data: (GameConfig cfg) => ListView(
+        children: <Widget>[
+          Text(
+            'Pick your challenge',
+            style: Theme.of(context).textTheme.headlineSmall,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
+          const Text(
+            'Spot the number to clear each round. Harder tiers pay out more.',
+            style: TextStyle(color: RajaColors.textSecondary, height: 1.4),
+          ),
+          const SizedBox(height: 20),
+          for (final GameDifficulty d in GameDifficulty.values) ...<Widget>[
+            _DifficultyTile(
+              difficulty: d,
+              reward: cfg.rewardFor(d),
+              onTap: () => onPick(d),
+            ),
+            const SizedBox(height: 12),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

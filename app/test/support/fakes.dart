@@ -43,6 +43,7 @@ class FakeApiClient extends ApiClient {
     this.onSubmitManualOfferProof,
     this.streakData,
     this.onClaimStreak,
+    this.gameConfigData,
     this.onStartRound,
     this.onCompleteRound,
     this.bonusStateData,
@@ -83,6 +84,7 @@ class FakeApiClient extends ApiClient {
       onSubmitManualOfferProof;
   final StreakState? streakData;
   final StreakClaimResult Function()? onClaimStreak;
+  final GameConfig? gameConfigData;
   final GameRound Function(GameDifficulty difficulty)? onStartRound;
   final RoundResult Function(String roundId)? onCompleteRound;
   final BonusState Function(BonusKind kind)? bonusStateData;
@@ -285,6 +287,15 @@ class FakeApiClient extends ApiClient {
       newBalance: 105,
     );
   }
+
+  @override
+  Future<GameConfig> gameConfig() async =>
+      gameConfigData ??
+      const GameConfig(coinsPerRound: <GameDifficulty, int>{
+        GameDifficulty.easy: 5,
+        GameDifficulty.medium: 10,
+        GameDifficulty.hard: 20,
+      });
 
   @override
   Future<GameRound> startGameRound(GameDifficulty difficulty) async {

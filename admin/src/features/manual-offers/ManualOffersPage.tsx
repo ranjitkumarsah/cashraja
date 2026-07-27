@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -35,6 +35,7 @@ import {
   TableRow,
 } from '../../components/ui/Table';
 import { EmptyState, ErrorState, LoadingState } from '../../components/QueryState';
+import { InstructionsField } from './InstructionsField';
 import { Tabs } from '../redemptions/Tabs';
 import { formatDateTime, formatNumber } from '../../lib/format';
 
@@ -73,6 +74,8 @@ function OfferFormModal({
   const {
     register,
     handleSubmit,
+    setValue,
+    control,
     formState: { errors },
   } = useForm<OfferValues>({
     resolver: zodResolver(offerSchema),
@@ -83,6 +86,10 @@ function OfferFormModal({
       coin_reward: offer?.coin_reward ?? 50,
     },
   });
+  // useWatch (not watch()) so the live preview re-renders without tripping the
+  // react-hooks incompatible-library rule.
+  const instructionsValue =
+    useWatch({ control, name: 'instructions', defaultValue: offer?.instructions ?? '' }) ?? '';
 
   const mutation = useMutation({
     mutationFn: (values: OfferValues) =>
@@ -130,12 +137,13 @@ function OfferFormModal({
           error={errors.description?.message}
           {...register('description')}
         />
-        <Textarea
-          label="Instructions"
-          rows={4}
-          placeholder="Exactly what the user must do to complete this offer."
+        <InstructionsField
+          registration={register('instructions')}
+          value={instructionsValue}
           error={errors.instructions?.message}
-          {...register('instructions')}
+          onValueChange={(next) =>
+            setValue('instructions', next, { shouldValidate: true, shouldDirty: true })
+          }
         />
         <Input
           label="Coin reward"

@@ -69,6 +69,31 @@ enum GameDifficulty {
   }
 }
 
+/// `GET /api/game/config` result — the admin-editable coins-per-round payout
+/// for each difficulty (H9). Drives the difficulty picker's reward labels so
+/// they always mirror `game.coins_per_round` config instead of hardcoded values.
+class GameConfig {
+  const GameConfig({required this.coinsPerRound});
+
+  final Map<GameDifficulty, int> coinsPerRound;
+
+  /// Coins the given [difficulty] pays per round (0 when unset).
+  int rewardFor(GameDifficulty difficulty) => coinsPerRound[difficulty] ?? 0;
+
+  factory GameConfig.fromJson(Map<String, dynamic> json) {
+    final Map<String, dynamic> perRound =
+        (json['coins_per_round'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    int read(String key) => (perRound[key] as num?)?.toInt() ?? 0;
+    return GameConfig(
+      coinsPerRound: <GameDifficulty, int>{
+        GameDifficulty.easy: read('easy'),
+        GameDifficulty.medium: read('medium'),
+        GameDifficulty.hard: read('hard'),
+      },
+    );
+  }
+}
+
 /// `POST /api/game/round-start` result — a server-issued round.
 class GameRound {
   const GameRound({

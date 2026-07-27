@@ -283,26 +283,46 @@ describeIt('Admin API (integration, HTTP + Postgres)', () => {
     });
   });
 
-  describe('gift-card catalog (C1.1)', () => {
-    it('super-admin creates a catalog entry; public list shows only active cards', async () => {
-      const active = await request(server)
+  describe('gift-card catalog (C1.1 + H10 in-stock filter)', () => {
+    it('public list shows only active, IN-STOCK cards (inactive + sold-out hidden)', async () => {
+      // Active + in stock: an inventory upload auto-creates the catalog card
+      // and gives it one unused code, so it should surface in the public list.
+      await request(server)
+        .post('/api/admin/inventory')
+        .set(...auth(superAdmin.token))
+        .send({ brand: GiftCardBrand.amazon, denomination: 611, codes: 'AMZN-611-CODE' })
+        .expect(201);
+      const inStock = await harness.prisma.giftCard.findFirst({
+        where: { brand: GiftCardBrand.amazon, denomination: 611 },
+      });
+      // Active but NO stock — hidden by H10.
+      const noStock = await request(server)
         .post('/api/admin/gift-cards')
         .set(...auth(superAdmin.token))
-        .send({ brand: GiftCardBrand.amazon, denomination: 611, coin_cost: 61100 })
+        .send({ brand: GiftCardBrand.amazon, denomination: 613, coin_cost: 61300 })
         .expect(201);
-      const activeId = active.body.id as string;
+      const noStockId = noStock.body.id as string;
+      // Inactive — hidden regardless of stock.
       const inactiveId = await harness.createGiftCard(GiftCardBrand.flipkart, 612, 61200, false);
 
       try {
         const userId = await harness.createUser();
         const token = await harness.appJwtFor(userId);
         const list = await request(server).get('/api/gift-cards').set(...auth(token)).expect(200);
-        const ids = (list.body as Array<{ id: string }>).map((c) => c.id);
-        expect(ids).toContain(activeId);
+        const body = list.body as Array<{ id: string; available: number }>;
+        const ids = body.map((c) => c.id);
+        expect(ids).toContain(inStock!.id);
+        expect(ids).not.toContain(noStockId);
         expect(ids).not.toContain(inactiveId);
+        // H10: every returned card has real stock.
+        expect(body.every((c) => c.available > 0)).toBe(true);
       } finally {
-        await harness.prisma.adminAuditLog.deleteMany({ where: { targetId: activeId } });
-        await harness.prisma.giftCard.delete({ where: { id: activeId } }).catch(() => undefined);
+        const cardIds = [inStock?.id, noStockId].filter((v): v is string => Boolean(v));
+        await harness.prisma.giftCardInventory.deleteMany({
+          where: { brand: GiftCardBrand.amazon, denomination: 611 },
+        });
+        await harness.prisma.adminAuditLog.deleteMany({ where: { targetId: { in: cardIds } } });
+        await harness.prisma.giftCard.deleteMany({ where: { id: { in: cardIds } } });
       }
     });
   });

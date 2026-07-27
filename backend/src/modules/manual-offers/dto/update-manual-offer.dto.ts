@@ -18,10 +18,11 @@ export class UpdateManualOfferDto {
   @MaxLength(2000)
   description?: string;
 
+  // Markdown-authored instructions (H7) — see CreateManualOfferDto.
   @IsOptional()
   @IsString()
   @MinLength(3)
-  @MaxLength(2000)
+  @MaxLength(5000)
   instructions?: string;
 
   @IsOptional()

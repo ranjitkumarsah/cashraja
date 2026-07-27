@@ -99,6 +99,9 @@ class _StoreTab extends ConsumerWidget {
   }
 
   /// Group the flat catalog into one entry per brand, in a stable brand order.
+  /// H10: only IN-STOCK cards are grouped, so brands with no available stock are
+  /// hidden from the store grid entirely (the backend already filters to
+  /// available>0; this is a defensive client-side guard).
   static List<_BrandGroup> _groupByBrand(List<GiftCard> cards) {
     const List<GiftCardBrand> order = <GiftCardBrand>[
       GiftCardBrand.amazon,
@@ -109,6 +112,7 @@ class _StoreTab extends ConsumerWidget {
     final Map<GiftCardBrand, List<GiftCard>> byBrand =
         <GiftCardBrand, List<GiftCard>>{};
     for (final GiftCard c in cards) {
+      if (!c.inStock) continue;
       byBrand.putIfAbsent(c.brand, () => <GiftCard>[]).add(c);
     }
     final List<_BrandGroup> groups = <_BrandGroup>[];

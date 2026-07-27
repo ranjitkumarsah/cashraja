@@ -53,6 +53,15 @@ export interface RoundCompleteResult {
   daily_cap_remaining: number;
 }
 
+/** Coins each difficulty pays per round (H9) — read from `game.coins_per_round`. */
+export interface GameConfigResult {
+  coins_per_round: {
+    easy: number;
+    medium: number;
+    hard: number;
+  };
+}
+
 /**
  * Number-pattern game (D1). Rounds are entirely server-issued and
  * server-scored: the client only reports a score for analytics, never for
@@ -72,6 +81,24 @@ export class GameService {
     @Inject(FRAUD_SIGNAL_HOOK) private readonly fraudSignal: FraudSignalHook,
     @Optional() @Inject(NOTIFICATION_HOOK) private readonly notifications?: NotificationHook,
   ) {}
+
+  /**
+   * Difficulty → coins-per-round map (H9). Same `game.coins_per_round` config the
+   * round reward reads, so the app's difficulty picker shows the real, admin-set
+   * payout for each tier instead of a hardcoded 5/10/20.
+   */
+  async getConfig(): Promise<GameConfigResult> {
+    const [easy, medium, hard] = await Promise.all([
+      this.appConfig.getNumber(CFG.coinsPerRound, GameDifficulty.easy, DEFAULTS.coinsPerRound.easy),
+      this.appConfig.getNumber(
+        CFG.coinsPerRound,
+        GameDifficulty.medium,
+        DEFAULTS.coinsPerRound.medium,
+      ),
+      this.appConfig.getNumber(CFG.coinsPerRound, GameDifficulty.hard, DEFAULTS.coinsPerRound.hard),
+    ]);
+    return { coins_per_round: { easy, medium, hard } };
+  }
 
   async roundStart(userId: string, difficulty: GameDifficulty): Promise<RoundStartResult> {
     const cap = await this.appConfig.getNumber(CFG.dailyCap, 'rounds', DEFAULTS.dailyCap);

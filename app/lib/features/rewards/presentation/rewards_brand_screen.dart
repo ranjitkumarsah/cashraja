@@ -47,8 +47,11 @@ class RewardsBrandScreen extends ConsumerWidget {
                         .read(giftCardsControllerProvider.notifier)
                         .refresh(),
                     data: (List<GiftCard> all) {
+                      // H10: show only in-stock denominations. The backend
+                      // returns available>0 only; this filter is a defensive
+                      // guard so sold-out cards never render.
                       final List<GiftCard> brandCards = all
-                          .where((GiftCard c) => c.brand == brand)
+                          .where((GiftCard c) => c.brand == brand && c.inStock)
                           .toList()
                         ..sort((GiftCard a, GiftCard b) =>
                             a.denomination.compareTo(b.denomination));

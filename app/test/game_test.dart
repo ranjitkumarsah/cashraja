@@ -140,6 +140,35 @@ void main() {
     expect(find.text('Pick your challenge'), findsOneWidget);
   });
 
+  testWidgets('Difficulty picker shows each tier reward from server config (H9)',
+      (tester) async {
+    await pumpApp(
+      tester,
+      const GameScreen(),
+      overrides: <Override>[
+        apiClientProvider.overrideWithValue(
+          FakeApiClient(
+            gameConfigData: const GameConfig(coinsPerRound: <GameDifficulty, int>{
+              GameDifficulty.easy: 8,
+              GameDifficulty.medium: 16,
+              GameDifficulty.hard: 32,
+            }),
+          ),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    // Rewards come from config (8/16/32), not the old hardcoded 5/10/20.
+    expect(find.text('Pick your challenge'), findsOneWidget);
+    expect(find.text('8'), findsOneWidget);
+    expect(find.text('16'), findsOneWidget);
+    expect(find.text('32'), findsOneWidget);
+    expect(find.text('5'), findsNothing);
+    expect(find.text('10'), findsNothing);
+    expect(find.text('20'), findsNothing);
+  });
+
   testWidgets('Game shows the daily-cap state when the server rejects start',
       (tester) async {
     await pumpApp(

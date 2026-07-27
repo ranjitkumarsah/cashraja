@@ -12,9 +12,11 @@ export class CreateManualOfferDto {
   @MaxLength(2000)
   description!: string;
 
+  // Markdown-authored instructions (H7): links, bold, code, lists. Higher cap
+  // than plain description since formatted content (URLs, list markup) is longer.
   @IsString()
   @MinLength(3)
-  @MaxLength(2000)
+  @MaxLength(5000)
   instructions!: string;
 
   @IsInt()

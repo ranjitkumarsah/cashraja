@@ -1160,6 +1160,20 @@
         ]
       }
     },
+    "/api/game/config": {
+      "get": {
+        "operationId": "GameController_config",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "game"
+        ]
+      }
+    },
     "/api/game/round-start": {
       "post": {
         "operationId": "GameController_roundStart",

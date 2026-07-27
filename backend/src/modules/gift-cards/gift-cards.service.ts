@@ -44,7 +44,12 @@ export class GiftCardsService {
     private readonly appConfig: AppConfigService,
   ) {}
 
-  /** Public catalog (JWT): active cards only, cheapest first. */
+  /**
+   * Public catalog (JWT): active, IN-STOCK cards only, cheapest first (H10).
+   * Sold-out denominations (available === 0) are dropped entirely so the store
+   * never shows phantom "out of stock" cards. Admin `listAll` still returns
+   * everything for management.
+   */
   async listActive(): Promise<GiftCardView[]> {
     const cards = await this.prisma.giftCard.findMany({
       where: { isActive: true },
@@ -54,7 +59,7 @@ export class GiftCardsService {
       this.unusedStockByCard(),
       this.appConfig.giftCardCoinsPerRupee(),
     ]);
-    return cards.map((c) => toView(c, rate, stock));
+    return cards.map((c) => toView(c, rate, stock)).filter((v) => v.available > 0);
   }
 
   /** Admin catalog: everything, incl. disabled cards. */
