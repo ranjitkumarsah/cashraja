@@ -40,6 +40,17 @@ class AuthUser {
         referralCode: p.referralCode,
         needsAttestation: p.needsAttestation,
       );
+
+  /// Empty stand-in used to keep a session alive when the profile can't be
+  /// loaded on startup (server waking / offline). The real values populate once
+  /// the backend responds; we never force a re-login over a transient failure.
+  factory AuthUser.placeholder() => const AuthUser(
+        id: '',
+        displayName: '',
+        email: '',
+        coinBalance: 0,
+        referralCode: '',
+      );
 }
 
 /// Full profile returned by `GET /api/me`.

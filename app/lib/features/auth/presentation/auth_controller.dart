@@ -25,26 +25,44 @@ class AuthController extends Notifier<AuthState> {
 
   Future<void> _bootstrap() async {
     final String? access = await ref.read(tokenStoreProvider).readAccess();
-    if (access == null || access.isEmpty) {
+    final String? refresh = await ref.read(tokenStoreProvider).readRefresh();
+    if ((access == null || access.isEmpty) && (refresh == null || refresh.isEmpty)) {
       state = const AuthState.unauthenticated();
       return;
     }
-    // We have a token — try to load the profile. On failure the interceptor
-    // handles refresh; a hard failure drops us to unauthenticated. Honor the
-    // server's needs_attestation flag so a user who abandoned attestation and
-    // reopened the app still lands on the attestation screen.
-    try {
-      final profile = await _api.me();
-      final AuthUser user = AuthUser.fromProfile(profile);
-      state = AuthState(
-        status: profile.needsAttestation
-            ? AuthStatus.pendingAttestation
-            : AuthStatus.authenticated,
-        user: user,
-      );
-    } on ApiException {
-      await ref.read(tokenStoreProvider).clear();
-      state = const AuthState.unauthenticated();
+    // We have a session — try to load the profile. The interceptor transparently
+    // refreshes an expired access token. Only a GENUINE auth failure (401 — the
+    // refresh token is also dead) ends the session; a transient failure (server
+    // cold-start, flaky network) must NOT log the user out. We retry a few times
+    // to ride out a cold start, and if it still fails we keep the session and let
+    // the app's own screens retry — never force a needless re-login.
+    for (int attempt = 0; ; attempt++) {
+      try {
+        final profile = await _api.me();
+        final AuthUser user = AuthUser.fromProfile(profile);
+        state = AuthState(
+          status: profile.needsAttestation
+              ? AuthStatus.pendingAttestation
+              : AuthStatus.authenticated,
+          user: user,
+        );
+        return;
+      } on ApiException catch (e) {
+        if (e.isUnauthorized) {
+          // Refresh already tried + failed in the interceptor → session is dead.
+          await ref.read(tokenStoreProvider).clear();
+          state = const AuthState.unauthenticated();
+          return;
+        }
+        if (attempt >= 3) {
+          // Persistent transient failure (server waking / offline). Keep the
+          // tokens and open the app as authenticated; wallet/profile reload on
+          // their own once the backend responds. Beats logging the user out.
+          state = AuthState(status: AuthStatus.authenticated, user: AuthUser.placeholder());
+          return;
+        }
+        await Future<void>.delayed(Duration(seconds: 3 * (attempt + 1)));
+      }
     }
   }
 

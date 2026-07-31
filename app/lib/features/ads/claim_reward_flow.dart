@@ -12,8 +12,13 @@ enum ClaimOutcome {
   /// now call the server credit endpoint.
   claimed,
 
-  /// User chose Claim but did not finish the ad (dismissed / no-fill / error) →
-  /// caller must NOT credit; nudge them to watch the full ad.
+  /// User chose Claim, but no ad could be shown (no-fill / load or show error).
+  /// This is NOT the user's fault, so the caller should STILL credit — otherwise
+  /// a consumed scratch/spin attempt would be lost with no reward.
+  adUnavailable,
+
+  /// User chose Claim but dismissed the ad early (before earning). Caller must
+  /// NOT credit; nudge them to watch the full ad.
   adIncomplete,
 
   /// User closed/forfeited the popup → no reward.
@@ -83,11 +88,22 @@ class _ClaimDialogState extends State<_ClaimDialog> {
     setState(() => _loading = true);
     final AdResult result = await widget.ads.show();
     if (!mounted) return;
-    Navigator.of(context).pop(
-      result == AdResult.watched
-          ? ClaimOutcome.claimed
-          : ClaimOutcome.adIncomplete,
-    );
+    Navigator.of(context).pop(_outcomeFor(result));
+  }
+
+  /// A watched ad credits; a genuinely unavailable ad (no-fill/error) also
+  /// credits so a consumed attempt is never wasted; only an early dismissal
+  /// withholds the reward.
+  static ClaimOutcome _outcomeFor(AdResult result) {
+    switch (result) {
+      case AdResult.watched:
+        return ClaimOutcome.claimed;
+      case AdResult.noFill:
+      case AdResult.failed:
+        return ClaimOutcome.adUnavailable;
+      case AdResult.dismissed:
+        return ClaimOutcome.adIncomplete;
+    }
   }
 
   @override

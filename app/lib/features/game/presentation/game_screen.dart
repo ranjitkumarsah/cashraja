@@ -159,6 +159,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     switch (outcome) {
       case ClaimOutcome.claimed:
         await _complete();
+      case ClaimOutcome.adUnavailable:
+        // Round was cleared but no ad could be shown — credit the coins anyway
+        // rather than penalise the player for missing ad inventory.
+        await _complete();
       case ClaimOutcome.adIncomplete:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Watch the full ad to claim your coins.')),

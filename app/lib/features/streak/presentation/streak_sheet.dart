@@ -41,11 +41,13 @@ class _StreakSheetState extends ConsumerState<StreakSheet> {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final NavigatorState navigator = Navigator.of(context);
 
-    // G2 (3a): the daily bonus is gated behind a rewarded ad. Only a completed
-    // watch calls the authoritative /streak/claim credit endpoint.
+    // G2 (3a): the daily bonus is gated behind a rewarded ad. A watched ad OR a
+    // genuinely unavailable one (no-fill/error) proceeds to claim — only an
+    // early dismissal blocks it, so missing ad inventory never stops a user
+    // claiming their daily streak.
     final AdResult ad = await ref.read(rewardedAdServiceProvider).show();
     if (!mounted) return;
-    if (ad != AdResult.watched) {
+    if (ad == AdResult.dismissed) {
       setState(() => _claiming = false);
       messenger.showSnackBar(
         const SnackBar(content: Text('Watch the ad to claim your streak bonus.')),
