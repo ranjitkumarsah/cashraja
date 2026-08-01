@@ -15,7 +15,6 @@ import 'models/offer.dart';
 import 'models/redemption.dart';
 import 'models/referral.dart';
 import 'models/streak.dart';
-import 'models/survey_wall.dart';
 import 'models/user.dart';
 import 'models/wallet.dart';
 import 'token_store.dart';
@@ -154,12 +153,6 @@ class ApiClient {
   Future<OfferLaunch> launchOffer(String offerId) async {
     final Map<String, dynamic> body = await _post('/offers/$offerId/launch');
     return OfferLaunch.fromJson(body);
-  }
-
-  /// CPX survey-wall URL for the signed-in user (or `available: false`).
-  Future<SurveyWall> surveyWall() async {
-    final Map<String, dynamic> body = await _get('/surveys/cpx');
-    return SurveyWall.fromJson(body);
   }
 
   // ---- Gift cards + redemptions -----------------------------------------

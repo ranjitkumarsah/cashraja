@@ -28,7 +28,6 @@ import { MetricsModule } from './modules/metrics/metrics.module';
 import { OffersModule } from './modules/offers/offers.module';
 import { PostbacksModule } from './modules/postbacks/postbacks.module';
 import { PublicModule } from './modules/public/public.module';
-import { SurveysModule } from './modules/surveys/surveys.module';
 import { RedemptionsModule } from './modules/redemptions/redemptions.module';
 import { ReferralModule } from './modules/referral/referral.module';
 import { StreakModule } from './modules/streak/streak.module';
@@ -93,7 +92,6 @@ import { ProvidersModule } from './providers/providers.module';
     FeedbackModule,
     ManualOffersModule,
     PublicModule,
-    SurveysModule,
     JobsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
