@@ -26,6 +26,7 @@ import { LedgerModule } from './modules/ledger/ledger.module';
 import { ManualOffersModule } from './modules/manual-offers/manual-offers.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { OffersModule } from './modules/offers/offers.module';
+import { PlaytimeModule } from './modules/playtime/playtime.module';
 import { PostbacksModule } from './modules/postbacks/postbacks.module';
 import { PublicModule } from './modules/public/public.module';
 import { RedemptionsModule } from './modules/redemptions/redemptions.module';
@@ -92,6 +93,7 @@ import { ProvidersModule } from './providers/providers.module';
     FeedbackModule,
     ManualOffersModule,
     PublicModule,
+    PlaytimeModule,
     JobsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

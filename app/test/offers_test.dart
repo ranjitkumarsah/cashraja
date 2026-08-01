@@ -22,7 +22,7 @@ void main() {
               coinReward: 500,
               description: 'Answer a few questions',
             ),
-            Offer(id: 'o2', network: 'cpx', title: 'Install a game', coinReward: 1200),
+            Offer(id: 'o2', network: 'playtime', title: 'Install a game', coinReward: 1200),
           ]),
         ),
       ],

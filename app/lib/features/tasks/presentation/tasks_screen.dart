@@ -3,9 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/api/models/offer.dart';
+import '../../../core/api/models/offer_wall.dart';
+import '../../../core/providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/raja_colors.dart';
 import '../../../core/theme/raja_theme.dart';
@@ -16,10 +19,29 @@ import '../../../core/widgets/gradient_background.dart';
 import 'offer_launch_screen.dart';
 import 'offers_controller.dart';
 
+/// PlaytimeAds hosted offerwall URL for the current user. Auto-disposes so it
+/// re-fetches when the Tasks tab reopens.
+final playtimeWallProvider = FutureProvider.autoDispose<OfferWall>((Ref ref) {
+  return ref.read(apiClientProvider).playtimeWall();
+});
+
 /// The offerwall — a list of active offers. Tapping one requests a launch token
 /// and hands off to the (stubbed) webview flow.
 class TasksScreen extends ConsumerWidget {
   const TasksScreen({super.key});
+
+  Future<void> _openWall(BuildContext context, String url) async {
+    final Uri? uri = Uri.tryParse(url);
+    bool ok = false;
+    if (uri != null) {
+      ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Couldn\'t open offers right now.')),
+      );
+    }
+  }
 
   Future<void> _launch(
     BuildContext context,
@@ -54,6 +76,8 @@ class TasksScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<Offer>> offers = ref.watch(offersControllerProvider);
+    // PlaytimeAds wall is best-effort: show the entry only when configured.
+    final OfferWall? wall = ref.watch(playtimeWallProvider).valueOrNull;
     return Scaffold(
       appBar: AppBar(title: const Text('Tasks')),
       extendBodyBehindAppBar: true,
@@ -86,7 +110,14 @@ class TasksScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    if (list.isEmpty)
+                    // PlaytimeAds hosted offerwall — shown only when configured.
+                    if (wall != null && wall.available && wall.url != null) ...<Widget>[
+                      _PlaytimeEntry(
+                        onTap: () => _openWall(context, wall.url!),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (list.isEmpty && (wall == null || !wall.available))
                       const Padding(
                         padding: EdgeInsets.only(top: 40),
                         child: EmptyStateView(
@@ -159,6 +190,55 @@ class _ManualOffersEntry extends StatelessWidget {
             ),
           ),
           const Icon(Icons.chevron_right_rounded, color: RajaColors.textMuted),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tasks-tab entry into the PlaytimeAds hosted offerwall (opens in the browser).
+class _PlaytimeEntry extends StatelessWidget {
+  const _PlaytimeEntry({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: RajaColors.surfaceHigh,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.videogame_asset_rounded, color: RajaColors.gold),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Play & earn',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: RajaColors.textPrimary,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Install apps, play games and complete offers for coins.',
+                  style: TextStyle(color: RajaColors.textMuted, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.open_in_new_rounded, color: RajaColors.textMuted, size: 20),
         ],
       ),
     );

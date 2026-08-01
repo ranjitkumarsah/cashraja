@@ -12,6 +12,7 @@ import 'models/gift_card.dart';
 import 'models/manual_offer.dart';
 import 'models/notification.dart';
 import 'models/offer.dart';
+import 'models/offer_wall.dart';
 import 'models/redemption.dart';
 import 'models/referral.dart';
 import 'models/streak.dart';
@@ -153,6 +154,12 @@ class ApiClient {
   Future<OfferLaunch> launchOffer(String offerId) async {
     final Map<String, dynamic> body = await _post('/offers/$offerId/launch');
     return OfferLaunch.fromJson(body);
+  }
+
+  /// PlaytimeAds hosted offerwall URL for the signed-in user (or unavailable).
+  Future<OfferWall> playtimeWall() async {
+    final Map<String, dynamic> body = await _get('/playtime/wall');
+    return OfferWall.fromJson(body);
   }
 
   // ---- Gift cards + redemptions -----------------------------------------

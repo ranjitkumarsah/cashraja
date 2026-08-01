@@ -54,6 +54,13 @@ export const envSchema = z
     OFFERTORO_SECRET_KEY: z.string().default(''),
     OFFERTORO_APP_ID: z.string().default(''),
     OFFERTORO_PUB_ID: z.string().default(''),
+    // PlaytimeAds offerwall (webview wall + S2S postback). Postback signature =
+    // sha1(user_id + offer_id + amount + PLAYTIME_APP_KEY + <secret>). SECRET_KEYS
+    // is a comma list so both a dashboard "API" secret and a "postback" secret can
+    // be accepted (either match credits). IFRAME_APP_ID = the "Manage iFrame" web-app key.
+    PLAYTIME_APP_KEY: z.string().default(''),
+    PLAYTIME_SECRET_KEYS: z.string().default(''),
+    PLAYTIME_IFRAME_APP_ID: z.string().default(''),
     APPLOVIN_CALLBACK_TOKEN: z.string().default(''),
     LEVELPLAY_PRIVATE_KEY: z.string().default(''),
     ADMOB_SSV_KEY_SERVER_URL: z.union([z.string().url(), z.literal('')]).default(''),
