@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { OfferwallAdapter } from './offerwall-adapter';
 import { AdgateAdapter } from './adgate.adapter';
 import { AdjoeAdapter } from './adjoe.adapter';
-import { CpxAdapter } from './cpx.adapter';
 import { MockOfferwallAdapter } from './mock-offerwall.adapter';
 import { OffertoroAdapter } from './offertoro.adapter';
 
@@ -29,7 +28,6 @@ export class OfferwallRegistryService {
         str('OFFERTORO_APP_ID'),
         str('OFFERTORO_PUB_ID'),
       ),
-      new CpxAdapter(str('CPX_SECURE_HASH'), str('CPX_APP_ID')),
     ];
     const byName = new Map(all.map((a) => [a.network, a]));
 

@@ -24,8 +24,8 @@ export const REDACTED_FIELD_NAMES = [
   'tempPassword',
   'totp_secret',
   'totpSecret',
-  // Phase B: offer-launch URLs embed a signed launch token; secure_hash is
-  // CPX's wall-URL credential derivative.
+  // Phase B: offer-launch URLs embed a signed launch token; secure_hash is a
+  // wall-URL credential derivative used by some offerwall networks.
   'launch_url',
   'launch_token',
   'secure_hash',

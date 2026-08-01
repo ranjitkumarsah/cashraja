@@ -54,8 +54,6 @@ export const envSchema = z
     OFFERTORO_SECRET_KEY: z.string().default(''),
     OFFERTORO_APP_ID: z.string().default(''),
     OFFERTORO_PUB_ID: z.string().default(''),
-    CPX_SECURE_HASH: z.string().default(''),
-    CPX_APP_ID: z.string().default(''),
     APPLOVIN_CALLBACK_TOKEN: z.string().default(''),
     LEVELPLAY_PRIVATE_KEY: z.string().default(''),
     ADMOB_SSV_KEY_SERVER_URL: z.union([z.string().url(), z.literal('')]).default(''),

@@ -84,7 +84,7 @@ build and a real cloud deploy (disk/time — configs are validated, not deployed
 6. **Play Console**: complete Data Safety + IARC (18+) + internal-testing track.
 
 ## 5. Known deferrals (by design)
-- **Offerwall/ad-network integrations** (Adjoe/AdGate/OfferToro/CPX/AppLovin):
+- **Offerwall/ad-network integrations** (Adjoe/AdGate/OfferToro/AppLovin/Tapjoy/PlaytimeAds):
   adapters are built and `NEEDS_CREDENTIALS`-gated; the in-app offerwall webview
   is stubbed. Manual offers + AdMob cover v1 earning. → **v2**, post-credentials.
 - **F2/F3 load & volume tests** beyond the existing webhook burst test — add

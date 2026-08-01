@@ -215,7 +215,7 @@ Decisions needed: (a) privacy/T&C legal review (draft from Data & Security doc);
 
 ## Domain (owner has graduatedcoder.in on Hostinger, 2026-07-25)
 - Subdomains: cashraja.graduatedcoder.in -> landing (/) + admin (/admin); api.cashraja.graduatedcoder.in -> backend API. (Chose api.cashraja.* over cashrajabackend.* — cleaner nesting.)
-- Uses: public privacy-policy URL for Play Store listing (cashraja.graduatedcoder.in/privacy or landing section); production API_BASE_URL for the app (https://api.cashraja.graduatedcoder.in/api); offerwall postback base URL for v2 (e.g. CPX -> https://api.cashraja.graduatedcoder.in/api/webhooks/offerwall/cpx).
+- Uses: public privacy-policy URL for Play Store listing (cashraja.graduatedcoder.in/privacy or landing section); production API_BASE_URL for the app (https://api.cashraja.graduatedcoder.in/api); offerwall postback base URL for v2 (e.g. https://cashraja.graduatedcoder.in/api/webhooks/offerwall/:network).
 - DNS wiring at deploy: VPS = A records -> VPS IP + Caddy/nginx + Let's Encrypt SSL; free stack = CNAME to Cloudflare Pages / Fly.io targets. Phase F outputs the exact records.
 - App release build must set --dart-define=API_BASE_URL=https://api.cashraja.graduatedcoder.in/api (replacing the localhost dev tunnel).
 

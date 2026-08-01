@@ -25,7 +25,7 @@ import { IntakeResult, PostbackIntakeService } from './postback-intake.service';
 /**
  * TRD §3.5 — POST /api/webhooks/offerwall/:network (public webhook,
  * HMAC-verified, NOT JWT'd). GET is also accepted because most production
- * offerwalls (adjoe/adgate/offertoro/cpx) deliver postbacks as GETs with
+ * offerwalls (adjoe/adgate/offertoro) deliver postbacks as GETs with
  * query macros.
  *
  * Throttling is skipped: authenticity comes from the signature, and networks

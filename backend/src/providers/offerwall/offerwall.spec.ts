@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { AdjoeAdapter } from './adjoe.adapter';
 import { AdgateAdapter } from './adgate.adapter';
-import { CpxAdapter } from './cpx.adapter';
 import { MOCK_SIGNATURE_HEADER, MockOfferwallAdapter } from './mock-offerwall.adapter';
 import { OffertoroAdapter } from './offertoro.adapter';
 import { OfferwallRegistryService } from './offerwall-registry.service';
@@ -111,7 +110,6 @@ describe('real-network skeletons (NEEDS_CREDENTIALS)', () => {
     expect(new AdjoeAdapter('').verifySignature(req)).toBe(false);
     expect(new AdgateAdapter('', '').verifySignature(req)).toBe(false);
     expect(new OffertoroAdapter('', '', '').verifySignature(req)).toBe(false);
-    expect(new CpxAdapter('', '').verifySignature(req)).toBe(false);
   });
 
   it('adjoe: sha1(user_uuid + trans_uuid + coin_amount + secret) as ?sid=', () => {
@@ -145,16 +143,6 @@ describe('real-network skeletons (NEEDS_CREDENTIALS)', () => {
       coins: 120,
       externalOfferId: '77',
     });
-  });
-
-  it('cpx: md5(trans_id-secure_hash) as ?hash=', () => {
-    const adapter = new CpxAdapter(SECRET, 'app-1');
-    const query = { trans_id: 'ct-1', user_id: 'u1', amount_local: '80' };
-    const hash = createHash('md5').update(`ct-1-${SECRET}`).digest('hex');
-    expect(adapter.verifySignature(requestOf({}, {}, { ...query, hash }))).toBe(true);
-    expect(
-      adapter.verifySignature(requestOf({}, {}, { ...query, hash: `0${hash.slice(1)}` })),
-    ).toBe(false);
   });
 
   it('adgate: md5(tx_id + secret) as ?hash= and wall launch URL', () => {
