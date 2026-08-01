@@ -58,6 +58,13 @@ export interface OfferwallAdapter {
    * (and a short-lived signed token) for postback matching.
    */
   buildLaunchUrl(user: LaunchUser, offer: LaunchOffer, launchToken: string): string;
+
+  /**
+   * Optional survey/offer WALL URL for a user (no specific offer) — used by
+   * wall-style networks like CPX where the app opens one webview and the wall
+   * reports completions via postback. Returns null when not configured.
+   */
+  buildWallUrl?(userId: string): string | null;
 }
 
 /** Thrown by parsePostback when a verified payload is still malformed. */

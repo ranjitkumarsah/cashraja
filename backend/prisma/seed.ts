@@ -17,13 +17,15 @@ const SUPER_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe!Dev123
 
 const CONFIG_DEFAULTS: Array<{ key: string; value: object }> = [
   { key: 'game.daily_round_cap', value: { rounds: 20 } },
-  { key: 'game.coins_per_round', value: { easy: 5, medium: 10, hard: 20 } },
+  // Conservative launch economics (owner): every reward is ad-gated, so a reward
+  // must stay within ~60% of one rewarded-ad's revenue at a low India eCPM.
+  { key: 'game.coins_per_round', value: { easy: 2, medium: 3, hard: 5 } },
   { key: 'game.min_play_seconds', value: { easy: 10, medium: 20, hard: 30 } },
   // Phase D — server-issued game round expiry window (round-start → round-complete)
   { key: 'game.round_expiry_seconds', value: { seconds: 120 } },
   { key: 'ads.daily_view_cap', value: { views: 10, bonus_slot: 1 } },
   { key: 'referral.bonus_percent', value: { percent: 10, window_days: 30 } },
-  { key: 'streak.day_rewards', value: { days: [5, 10, 15, 20, 30, 40, 50] } },
+  { key: 'streak.day_rewards', value: { days: [2, 3, 4, 5, 6, 8, 10] } },
   { key: 'fraud.device_account_limits', value: { flag_over: 2, block_over: 3 } },
   // Phase E — offer-completion velocity window (Redis sliding-window rule).
   { key: 'fraud.offer_velocity', value: { max_completions: 20, window_minutes: 10 } },
@@ -105,28 +107,26 @@ async function main(): Promise<void> {
   }
   console.log(`Seeded app_config defaults: ${CONFIG_DEFAULTS.length} keys`);
 
+  // Conservative launch prize table (owner): capped at 5 coins — every scratch
+  // is ad-gated, so the top prize must sit within ~one rewarded-ad's value.
+  const scratchTable = [
+    { coins: 1, weight: 50 },
+    { coins: 2, weight: 30 },
+    { coins: 3, weight: 15 },
+    { coins: 5, weight: 5 },
+  ];
   await prisma.bonusConfig.upsert({
     where: { kind_version: { kind: 'scratch', version: 1 } },
-    update: {},
-    create: {
-      kind: 'scratch',
-      version: 1,
-      attemptsPerDay: 3,
-      weightedTable: [
-        { coins: 1, weight: 50 },
-        { coins: 5, weight: 30 },
-        { coins: 10, weight: 15 },
-        { coins: 50, weight: 5 },
-      ],
-    },
+    update: { weightedTable: scratchTable, attemptsPerDay: 3 },
+    create: { kind: 'scratch', version: 1, attemptsPerDay: 3, weightedTable: scratchTable },
   });
-  // Spin prizes: every spin awards between 1 and 10 coins (owner spec).
+  // Spin prizes: capped at 8 coins (once/day, so a slightly higher top prize).
   const spinTable = [
     { coins: 1, weight: 40 },
     { coins: 2, weight: 30 },
-    { coins: 3, weight: 15 },
-    { coins: 5, weight: 10 },
-    { coins: 10, weight: 5 },
+    { coins: 3, weight: 18 },
+    { coins: 5, weight: 9 },
+    { coins: 8, weight: 3 },
   ];
   await prisma.bonusConfig.upsert({
     where: { kind_version: { kind: 'spin', version: 1 } },

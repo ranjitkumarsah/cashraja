@@ -51,6 +51,23 @@ export class CpxAdapter implements OfferwallAdapter {
     };
   }
 
+  /**
+   * Survey-wall URL for a user (no specific offer). The app opens this in a
+   * webview; CPX reports completed surveys via the postback webhook, which the
+   * generic intake pipeline credits. Returns null until credentials are set.
+   */
+  buildWallUrl(userId: string): string | null {
+    if (!this.secureHash || !this.appId) return null;
+    const url = new URL('https://offers.cpx-research.com/index.php');
+    url.searchParams.set('app_id', this.appId);
+    url.searchParams.set('ext_user_id', userId);
+    url.searchParams.set(
+      'secure_hash',
+      createHash('md5').update(`${userId}-${this.secureHash}`).digest('hex'),
+    );
+    return url.toString();
+  }
+
   buildLaunchUrl(user: LaunchUser, offer: LaunchOffer, launchToken: string): string {
     const app = this.appId || 'NEEDS_CREDENTIALS_APP_ID';
     const url = new URL('https://offers.cpx-research.com/index.php');
