@@ -156,10 +156,10 @@ class ApiClient {
     return OfferLaunch.fromJson(body);
   }
 
-  /// PlaytimeAds hosted offerwall URL for the signed-in user (or unavailable).
-  Future<OfferWall> playtimeWall() async {
-    final Map<String, dynamic> body = await _get('/playtime/wall');
-    return OfferWall.fromJson(body);
+  /// PlaytimeAds config: whether the offerwall is enabled + the SDK app key.
+  Future<PlaytimeConfig> playtimeConfig() async {
+    final Map<String, dynamic> body = await _get('/playtime/config');
+    return PlaytimeConfig.fromJson(body);
   }
 
   // ---- Gift cards + redemptions -----------------------------------------

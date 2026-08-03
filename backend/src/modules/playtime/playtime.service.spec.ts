@@ -47,7 +47,7 @@ function fakePrisma(userExists: boolean): PrismaService {
 
 function makeService(opts: {
   secrets?: string;
-  iframe?: string;
+  appKey?: string;
   userExists?: boolean;
   ledger?: FakeLedger;
   notifications?: FakeNotifications;
@@ -56,9 +56,8 @@ function makeService(opts: {
   const notifications = opts.notifications ?? new FakeNotifications();
   const service = new PlaytimeService(
     makeConfig({
-      PLAYTIME_APP_KEY: APP_KEY,
+      PLAYTIME_APP_KEY: opts.appKey ?? APP_KEY,
       PLAYTIME_SECRET_KEYS: opts.secrets ?? `${SECRET_A},${SECRET_B}`,
-      PLAYTIME_IFRAME_APP_ID: opts.iframe ?? '',
     }),
     fakePrisma(opts.userExists ?? true),
     ledger as unknown as LedgerService,
@@ -139,15 +138,14 @@ describe('PlaytimeService.credit', () => {
   });
 });
 
-describe('PlaytimeService.buildWallUrl', () => {
-  it('returns null without an iFrame app id', () => {
-    const { service } = makeService({});
-    expect(service.buildWallUrl('u1')).toBeNull();
+describe('PlaytimeService.androidAppKey', () => {
+  it('returns null when not configured (no secrets)', () => {
+    const { service } = makeService({ secrets: '' });
+    expect(service.androidAppKey()).toBeNull();
   });
 
-  it('builds the hosted wall URL with app_id + user_id', () => {
-    const { service } = makeService({ iframe: 'iframe-key-123' });
-    const url = service.buildWallUrl('u1');
-    expect(url).toBe('https://web.playtimeads.com/index.php?app_id=iframe-key-123&user_id=u1');
+  it('returns the App Key (same one that signs the postback) when configured', () => {
+    const { service } = makeService({});
+    expect(service.androidAppKey()).toBe(APP_KEY);
   });
 });

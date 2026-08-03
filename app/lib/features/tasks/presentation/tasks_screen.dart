@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/api/models/offer.dart';
@@ -16,13 +15,15 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/coin_glyph.dart';
 import '../../../core/widgets/gradient_background.dart';
+import '../../auth/presentation/auth_controller.dart';
 import 'offer_launch_screen.dart';
 import 'offers_controller.dart';
+import 'playtime_sdk.dart';
 
-/// PlaytimeAds hosted offerwall URL for the current user. Auto-disposes so it
-/// re-fetches when the Tasks tab reopens.
-final playtimeWallProvider = FutureProvider.autoDispose<OfferWall>((Ref ref) {
-  return ref.read(apiClientProvider).playtimeWall();
+/// PlaytimeAds offerwall config for the current user (available + SDK app key).
+/// Auto-disposes so it re-fetches when the Tasks tab reopens.
+final playtimeConfigProvider = FutureProvider.autoDispose<PlaytimeConfig>((Ref ref) {
+  return ref.read(apiClientProvider).playtimeConfig();
 });
 
 /// The offerwall — a list of active offers. Tapping one requests a launch token
@@ -30,15 +31,16 @@ final playtimeWallProvider = FutureProvider.autoDispose<OfferWall>((Ref ref) {
 class TasksScreen extends ConsumerWidget {
   const TasksScreen({super.key});
 
-  Future<void> _openWall(BuildContext context, String url) async {
-    final Uri? uri = Uri.tryParse(url);
-    bool ok = false;
-    if (uri != null) {
-      ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-    if (!ok && context.mounted) {
+  /// Init the native PlaytimeAds SDK with the user's id, then open the wall.
+  Future<void> _openPlaytime(BuildContext context, WidgetRef ref, String appKey) async {
+    final String? userId = ref.read(authControllerProvider).user?.id;
+    const PlaytimeSdk sdk = PlaytimeSdk();
+    final bool ready =
+        userId != null && userId.isNotEmpty && await sdk.init(appKey: appKey, userId: userId);
+    final bool opened = ready && await sdk.open();
+    if (!opened && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Couldn\'t open offers right now.')),
+        const SnackBar(content: Text('Offers aren\'t available right now.')),
       );
     }
   }
@@ -76,8 +78,8 @@ class TasksScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<Offer>> offers = ref.watch(offersControllerProvider);
-    // PlaytimeAds wall is best-effort: show the entry only when configured.
-    final OfferWall? wall = ref.watch(playtimeWallProvider).valueOrNull;
+    // PlaytimeAds is best-effort: show the entry only when configured server-side.
+    final PlaytimeConfig? wall = ref.watch(playtimeConfigProvider).valueOrNull;
     return Scaffold(
       appBar: AppBar(title: const Text('Tasks')),
       extendBodyBehindAppBar: true,
@@ -110,10 +112,10 @@ class TasksScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // PlaytimeAds hosted offerwall — shown only when configured.
-                    if (wall != null && wall.available && wall.url != null) ...<Widget>[
+                    // PlaytimeAds native offerwall — shown only when configured.
+                    if (wall != null && wall.available && wall.appKey != null) ...<Widget>[
                       _PlaytimeEntry(
-                        onTap: () => _openWall(context, wall.url!),
+                        onTap: () => _openPlaytime(context, ref, wall.appKey!),
                       ),
                       const SizedBox(height: 12),
                     ],

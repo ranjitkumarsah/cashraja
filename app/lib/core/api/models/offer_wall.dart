@@ -1,15 +1,15 @@
-/// Response of a hosted-offerwall URL endpoint (e.g. `GET /api/playtime/wall`) —
-/// the per-user wall URL to open, or `available: false` when not configured.
-class OfferWall {
-  const OfferWall({required this.available, this.url});
+/// Response of `GET /api/playtime/config` — whether the PlaytimeAds offerwall is
+/// enabled and, if so, the SDK app key the app inits the native wall with.
+class PlaytimeConfig {
+  const PlaytimeConfig({required this.available, this.appKey});
 
   final bool available;
-  final String? url;
+  final String? appKey;
 
-  factory OfferWall.fromJson(Map<String, dynamic> json) {
-    return OfferWall(
+  factory PlaytimeConfig.fromJson(Map<String, dynamic> json) {
+    return PlaytimeConfig(
       available: (json['available'] as bool?) ?? false,
-      url: json['url'] as String?,
+      appKey: json['app_key'] as String? ?? json['appKey'] as String?,
     );
   }
 }

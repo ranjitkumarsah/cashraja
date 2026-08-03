@@ -34,7 +34,6 @@ export class PlaytimeService {
   private readonly logger = new Logger(PlaytimeService.name);
   private readonly appKey: string;
   private readonly secretKeys: string[];
-  private readonly iframeAppId: string;
 
   constructor(
     config: ConfigService,
@@ -47,7 +46,6 @@ export class PlaytimeService {
       .split(',')
       .map((k) => k.trim())
       .filter((k) => k.length > 0);
-    this.iframeAppId = config.get<string>('PLAYTIME_IFRAME_APP_ID') ?? '';
   }
 
   /** Credentials present → the callback can verify + the wall can be built. */
@@ -106,12 +104,13 @@ export class PlaytimeService {
     return 'credited';
   }
 
-  /** Hosted offerwall URL for a user, or null when the iFrame app id is unset. */
-  buildWallUrl(userId: string): string | null {
-    if (!this.iframeAppId) return null;
-    const url = new URL('https://web.playtimeads.com/index.php');
-    url.searchParams.set('app_id', this.iframeAppId);
-    url.searchParams.set('user_id', userId);
-    return url.toString();
+  /**
+   * Android SDK application key the app inits the offerwall with (the same App
+   * Key that signs the postback), or null when Playtime isn't configured. The
+   * SDK renders the wall natively; rewards still credit via the S2S callback.
+   * Not secret — it ships in the app.
+   */
+  androidAppKey(): string | null {
+    return this.configured ? this.appKey : null;
   }
 }

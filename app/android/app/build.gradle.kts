@@ -77,4 +77,7 @@ flutter {
 dependencies {
     // Core library desugaring — required by flutter_local_notifications (H8).
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // PlaytimeAds offerwall SDK (Maven Central). Shown via a platform channel
+    // (MainActivity); rewards credit server-side via the S2S postback.
+    implementation("com.playtimeads:offerwall:2.0.7")
 }

@@ -2,6 +2,9 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // FingerprintJS Pro Android — a transitive dependency of the PlaytimeAds
+        // offerwall SDK (com.fingerprint.android:pro), hosted on their own maven.
+        maven { url = uri("https://maven.fpregistry.io/releases") }
     }
 }
 

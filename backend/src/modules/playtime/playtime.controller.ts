@@ -14,7 +14,8 @@ import { PlaytimeCallback, PlaytimeService } from './playtime.service';
  * PlaytimeAds offerwall endpoints:
  *  - GET/POST /api/playtime/callback — public S2S postback (verified by SHA1
  *    signature, NOT JWT). Set this URL in the PlaytimeAds dashboard.
- *  - GET /api/playtime/wall — the signed-in user's hosted wall URL for the app.
+ *  - GET /api/playtime/config — whether Playtime is enabled + the SDK app key
+ *    the app inits the native offerwall with.
  */
 @ApiTags('playtime')
 @Controller('playtime')
@@ -51,11 +52,11 @@ export class PlaytimeController {
     return 'OK';
   }
 
-  @Get('wall')
+  @Get('config')
   @UseGuards(JwtAuthGuard)
-  @ApiOkResponse({ description: 'Hosted PlaytimeAds wall URL for the signed-in user.' })
-  wall(@CurrentUser() user: AuthenticatedUser): { available: boolean; url: string | null } {
-    const url = this.playtime.buildWallUrl(user.id);
-    return { available: url != null, url };
+  @ApiOkResponse({ description: 'Whether Playtime is enabled + the SDK app key.' })
+  config(@CurrentUser() _user: AuthenticatedUser): { available: boolean; appKey: string | null } {
+    const appKey = this.playtime.androidAppKey();
+    return { available: appKey != null, appKey };
   }
 }
