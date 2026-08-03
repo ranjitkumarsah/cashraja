@@ -12,6 +12,7 @@ import '../../notifications/data/push_messaging.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
 import '../../tasks/presentation/tasks_screen.dart';
+import '../../wallet/presentation/wallet_controllers.dart';
 import '../../wallet/presentation/wallet_screen.dart';
 import 'home_tab.dart';
 
@@ -35,7 +36,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   /// "press back again to exit" pattern.
   DateTime? _lastBackPress;
 
-  void _go(int i) => setState(() => _index = i);
+  void _go(int i) {
+    setState(() => _index = i);
+    // The Wallet tab is kept alive by IndexedStack, so reopening it reloads the
+    // balance + full history (freshly-earned coins show without a manual pull).
+    if (i == 2) {
+      ref.read(walletControllerProvider.notifier).refresh();
+      ref.read(ledgerControllerProvider.notifier).refresh();
+    }
+  }
 
   /// Android back handling for the top-level Home shell:
   ///  • On a non-Home tab, back returns to the Home tab (never exits).

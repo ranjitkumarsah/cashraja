@@ -25,6 +25,12 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
   void initState() {
     super.initState();
     _scroll.addListener(_onScroll);
+    // The inbox provider is kept alive app-wide (it also feeds the Home unread
+    // badge), so opening this screen would otherwise show a stale/cached list.
+    // Reload after the first frame so newly-arrived notifications appear.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(notificationsControllerProvider.notifier).refresh();
+    });
   }
 
   @override
@@ -64,12 +70,15 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                 if (state.items.isEmpty) {
                   return ListView(
                     controller: _scroll,
+                    // Always scrollable so pull-to-refresh works while empty.
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(20),
                     children: const <Widget>[_EmptyInbox()],
                   );
                 }
                 return ListView.separated(
                   controller: _scroll,
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
                   itemCount: state.items.length + (state.hasMore ? 1 : 0),
                   separatorBuilder: (_, _) => const SizedBox(height: 12),

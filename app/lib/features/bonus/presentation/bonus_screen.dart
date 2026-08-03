@@ -143,10 +143,6 @@ class _BonusTabState extends ConsumerState<_BonusTab>
       switch (outcome) {
         case ClaimOutcome.claimed:
           await _claimScratch(roll.reservationId);
-        case ClaimOutcome.adUnavailable:
-          // No ad to show right now — don't waste the consumed attempt; credit
-          // the prize the user already revealed.
-          await _claimScratch(roll.reservationId);
         case ClaimOutcome.adIncomplete:
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -241,10 +237,6 @@ class _BonusTabState extends ConsumerState<_BonusTab>
       if (!mounted) return;
       switch (outcome) {
         case ClaimOutcome.claimed:
-          await _claimSpin(roll.reservationId);
-        case ClaimOutcome.adUnavailable:
-          // No ad available — credit the reserved prize rather than waste the
-          // consumed spin attempt.
           await _claimSpin(roll.reservationId);
         case ClaimOutcome.adIncomplete:
           ScaffoldMessenger.of(context).showSnackBar(

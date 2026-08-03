@@ -65,6 +65,9 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
             onRefresh: _refresh,
             child: CustomScrollView(
               controller: _scroll,
+              // Always scrollable so pull-to-refresh works even when the history
+              // is short enough to fit on screen.
+              physics: const AlwaysScrollableScrollPhysics(),
               slivers: <Widget>[
                 SliverToBoxAdapter(
                   child: Padding(
