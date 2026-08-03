@@ -19,8 +19,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Free-tier: keep the BullMQ workers OFF — their 24/7 Redis polling would
+      # blow the Upstash 500k-cmd/month cap. Safe here: Playtime credits directly
+      # (no queue), there are no offerwall/ad webhooks, and redemptions issue
+      # synchronously. Turn back on only with a paid Redis + active offerwall S2S.
       - key: POSTBACK_WORKER_ENABLED
-        value: "true"
+        value: "false"
       - key: OFFERWALL_NETWORKS
         value: ""
       - key: AD_NETWORKS
