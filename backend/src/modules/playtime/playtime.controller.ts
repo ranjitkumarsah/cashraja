@@ -38,6 +38,7 @@ export class PlaytimeController {
       offerId: q.offer_id ?? '',
       amount: q.amount ?? '',
       signature: q.signature ?? '',
+      event: q.event,
       taskId: q.task_id,
       offerName: q.offer_name,
     };

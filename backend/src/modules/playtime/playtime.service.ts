@@ -10,9 +10,11 @@ import { NOTIFICATION_HOOK, NotificationHook } from '../notifications/notificati
 export interface PlaytimeCallback {
   userId: string;
   offerId: string;
-  /** Coin reward, kept as the raw string it arrived as — the signature is over it. */
+  /** Coin reward, kept as the raw string it arrived as (SDK signature uses it). */
   amount: string;
   signature: string;
+  /** Event name — the WEB/iFrame signature is computed over this, not amount. */
+  event?: string;
   taskId?: string;
   offerName?: string;
 }
@@ -52,40 +54,42 @@ export class PlaytimeService {
     this.webSecret = config.get<string>('PLAYTIME_WEB_SECRET') ?? '';
   }
 
-  /**
-   * (appKey, secret) pairs a postback signature is checked against — one per
-   * configured Playtime app (Android SDK + Web iFrame). The signature bakes in
-   * the app key, so each platform's completions verify with its own pair.
-   */
-  private signingPairs(): { appKey: string; secret: string }[] {
-    const pairs: { appKey: string; secret: string }[] = [];
-    for (const secret of this.androidSecrets) {
-      if (this.androidKey) pairs.push({ appKey: this.androidKey, secret });
-    }
-    if (this.webKey && this.webSecret) pairs.push({ appKey: this.webKey, secret: this.webSecret });
-    return pairs;
-  }
-
   /** Any Playtime app configured → the callback can verify completions. */
   get configured(): boolean {
-    return this.signingPairs().length > 0;
+    return (
+      (this.androidKey.length > 0 && this.androidSecrets.length > 0) ||
+      (this.webKey.length > 0 && this.webSecret.length > 0)
+    );
   }
 
   /**
-   * PlaytimeAds signature = sha1(user_id + offer_id + amount + APP_KEY + SECRET).
-   * A completion may come from the Android or the Web app, so we accept a match
-   * against ANY configured (appKey, secret) pair.
+   * Verify a postback signature. The two Playtime apps sign DIFFERENTLY:
+   *  - Android SDK: sha1(user_id + offer_id + amount + APP_KEY + SECRET)
+   *  - Web iFrame:  sha1(user_id + offer_id + event  + APP_KEY + SECRET)
+   * A completion can come from either app, so we accept a match against either.
    */
   verifySignature(cb: PlaytimeCallback): boolean {
     if (!cb.signature) return false;
     const provided = Buffer.from(cb.signature.toLowerCase(), 'utf8');
-    return this.signingPairs().some(({ appKey, secret }) => {
-      const expected = createHash('sha1')
-        .update(`${cb.userId}${cb.offerId}${cb.amount}${appKey}${secret}`)
-        .digest('hex');
-      const exp = Buffer.from(expected, 'utf8');
+    const matches = (message: string): boolean => {
+      const exp = Buffer.from(createHash('sha1').update(message).digest('hex'), 'utf8');
       return exp.length === provided.length && timingSafeEqual(exp, provided);
-    });
+    };
+    // Android SDK apps (amount-based).
+    for (const secret of this.androidSecrets) {
+      if (this.androidKey && matches(`${cb.userId}${cb.offerId}${cb.amount}${this.androidKey}${secret}`)) {
+        return true;
+      }
+    }
+    // Web iFrame app (event-based).
+    if (
+      this.webKey &&
+      this.webSecret &&
+      matches(`${cb.userId}${cb.offerId}${cb.event ?? ''}${this.webKey}${this.webSecret}`)
+    ) {
+      return true;
+    }
+    return false;
   }
 
   /** Credit the verified completion (call verifySignature first). */
@@ -93,31 +97,36 @@ export class PlaytimeService {
     const coins = Number.parseInt(cb.amount, 10);
     if (!Number.isFinite(coins) || coins <= 0) return 'invalid_amount';
 
+    // Playtime's "test postback" button prefixes ids with TEST_. Strip it so a
+    // test still credits the real user; real completions carry no prefix (no-op).
+    const userId = cb.userId.replace(/^TEST_/, '');
+    const offerId = cb.offerId.replace(/^TEST_/, '');
+
     const user = await this.prisma.user.findUnique({
-      where: { id: cb.userId },
+      where: { id: userId },
       select: { id: true },
     });
     if (!user) return 'unknown_user';
 
     // No unique conversion id in the postback → key on user+offer+task.
-    const idempotencyKey = `playtime:${cb.userId}:${cb.offerId}:${cb.taskId ?? ''}`;
+    const idempotencyKey = `playtime:${userId}:${offerId}:${cb.taskId ?? ''}`;
     const result = await this.ledger.record({
-      userId: cb.userId,
+      userId,
       amount: coins,
       sourceType: LedgerSourceType.offer,
-      sourceRefId: cb.offerId,
+      sourceRefId: offerId,
       idempotencyKey,
     });
     if (result.duplicate) return 'duplicate';
 
     await this.notifications.onCredited({
-      userId: cb.userId,
+      userId,
       coins,
       sourceType: LedgerSourceType.offer,
-      sourceRefId: cb.offerId,
+      sourceRefId: offerId,
     });
     this.logger.log(
-      `playtime credit: user=${cb.userId} offer=${cb.offerId} +${coins} coins`,
+      `playtime credit: user=${userId} offer=${offerId} +${coins} coins`,
     );
     return 'credited';
   }

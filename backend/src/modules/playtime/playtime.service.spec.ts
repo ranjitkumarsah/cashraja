@@ -11,13 +11,25 @@ const ANDROID_SECRET = 'YLGEOCTTTOCSWPZ2';
 const WEB_KEY = '739339548770a4b2';
 const WEB_SECRET = 'IWUA7KJOYK8QFW6B6WWEXJW5LRCI6J';
 
-function sign(
+/** Android SDK signature: over amount. */
+function signAndroid(
   cb: { userId: string; offerId: string; amount: string },
   appKey: string,
   secret: string,
 ): string {
   return createHash('sha1')
     .update(`${cb.userId}${cb.offerId}${cb.amount}${appKey}${secret}`)
+    .digest('hex');
+}
+
+/** Web iFrame signature: over event. */
+function signWeb(
+  cb: { userId: string; offerId: string; event: string },
+  appKey: string,
+  secret: string,
+): string {
+  return createHash('sha1')
+    .update(`${cb.userId}${cb.offerId}${cb.event}${appKey}${secret}`)
     .digest('hex');
 }
 
@@ -73,36 +85,37 @@ function makeService(opts: {
   return { service, ledger, notifications };
 }
 
-const base = { userId: 'u1', offerId: 'o1', amount: '100' };
+const base = { userId: 'u1', offerId: 'o1', amount: '100', event: 'CONVERSION' };
 
 describe('PlaytimeService.verifySignature', () => {
-  it('accepts an Android-app-signed postback', () => {
+  it('accepts an Android-app-signed postback (amount-based)', () => {
     const { service } = makeService({ web: true });
     expect(
-      service.verifySignature({ ...base, signature: sign(base, ANDROID_KEY, ANDROID_SECRET) }),
+      service.verifySignature({ ...base, signature: signAndroid(base, ANDROID_KEY, ANDROID_SECRET) }),
     ).toBe(true);
   });
 
-  it('accepts a Web-app-signed postback (different key + secret)', () => {
+  it('accepts a Web-app-signed postback (event-based, different key + secret)', () => {
     const { service } = makeService({ web: true });
-    expect(service.verifySignature({ ...base, signature: sign(base, WEB_KEY, WEB_SECRET) })).toBe(
-      true,
-    );
+    expect(
+      service.verifySignature({ ...base, signature: signWeb(base, WEB_KEY, WEB_SECRET) }),
+    ).toBe(true);
   });
 
-  it('rejects a forged / cross-mismatched signature', () => {
+  it('does NOT accept the web formula signed with the android key (amount vs event)', () => {
     const { service } = makeService({ web: true });
     expect(service.verifySignature({ ...base, signature: 'deadbeef' })).toBe(false);
-    // Android key with the web secret must NOT verify.
+    // Android app signs over amount, not event — a web-style sig with the android
+    // pair must fail.
     expect(
-      service.verifySignature({ ...base, signature: sign(base, ANDROID_KEY, WEB_SECRET) }),
+      service.verifySignature({ ...base, signature: signWeb(base, ANDROID_KEY, ANDROID_SECRET) }),
     ).toBe(false);
   });
 
   it('rejects everything when no Playtime app is configured', () => {
     const { service } = makeService({ android: false, web: false });
     expect(
-      service.verifySignature({ ...base, signature: sign(base, ANDROID_KEY, ANDROID_SECRET) }),
+      service.verifySignature({ ...base, signature: signAndroid(base, ANDROID_KEY, ANDROID_SECRET) }),
     ).toBe(false);
   });
 });
