@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { CoinMark } from '../../components/CoinMark';
-import { attest, isWebAuthed, signInWithGoogle } from './web-auth';
-import { webApiError } from './web-api';
+import { attest, authErrorMessage, isWebAuthed, signInWithGoogle } from './web-auth';
 
 type Phase = 'signin' | 'attest';
 
@@ -31,7 +30,7 @@ export function WebLoginPage() {
         navigate('/home', { replace: true });
       }
     } catch (e) {
-      setError(webApiError(e, 'Sign-in failed. Please try again.'));
+      setError(authErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -49,7 +48,7 @@ export function WebLoginPage() {
       await attest(dob, referral.trim() || undefined);
       navigate('/home', { replace: true });
     } catch (err) {
-      setError(webApiError(err, 'Could not verify your details. Please try again.'));
+      setError(authErrorMessage(err));
     } finally {
       setBusy(false);
     }

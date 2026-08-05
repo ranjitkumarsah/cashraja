@@ -1,7 +1,31 @@
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from './firebase';
-import { webApi } from './web-api';
+import { webApi, webApiError } from './web-api';
 import { webTokens } from './web-token-store';
+
+/** Human-readable message for a Firebase auth or backend error. */
+export function authErrorMessage(e: unknown): string {
+  const code =
+    e && typeof e === 'object' && 'code' in e && typeof (e as { code: unknown }).code === 'string'
+      ? (e as { code: string }).code
+      : '';
+  if (code.startsWith('auth/')) {
+    switch (code) {
+      case 'auth/unauthorized-domain':
+        return 'This site isn\'t authorized for Google sign-in yet. Please add the domain in Firebase → Authentication → Authorized domains.';
+      case 'auth/popup-closed-by-user':
+      case 'auth/cancelled-popup-request':
+        return 'Sign-in was cancelled. Please try again.';
+      case 'auth/popup-blocked':
+        return 'Your browser blocked the sign-in popup. Allow popups for this site and try again.';
+      case 'auth/network-request-failed':
+        return 'Network error during sign-in. Check your connection and try again.';
+      default:
+        return `Sign-in error (${code}). Please try again.`;
+    }
+  }
+  return webApiError(e, 'Sign-in failed. Please try again.');
+}
 
 export interface WebUser {
   id: string;
