@@ -19,14 +19,14 @@ import type { NextFunction, Request, Response } from 'express';
  */
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  // Firebase Web Auth loads Google's gapi script + gstatic assets.
-  "script-src 'self' https://apis.google.com https://www.gstatic.com",
+  // Firebase Web Auth loads Google's gapi + gstatic; GA4 loads gtag.js.
+  "script-src 'self' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline'",
   // https: allows Google account profile images.
   "img-src 'self' data: https:",
   "font-src 'self' data:",
-  // Firebase Auth REST endpoints (sign-in, token refresh).
-  "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com",
+  // Firebase Auth REST endpoints (sign-in, token refresh) + GA4 collection.
+  "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com",
   // The Firebase auth handler iframe + Google account chooser + the embedded
   // PlaytimeAds web offerwall.
   "frame-src 'self' https://cashraja-prod.firebaseapp.com https://accounts.google.com https://web.playtimeads.com",
