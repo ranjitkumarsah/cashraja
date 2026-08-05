@@ -19,11 +19,16 @@ import type { NextFunction, Request, Response } from 'express';
  */
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "script-src 'self'",
+  // Firebase Web Auth loads Google's gapi script + gstatic assets.
+  "script-src 'self' https://apis.google.com https://www.gstatic.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
+  // https: allows Google account profile images.
+  "img-src 'self' data: https:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  // Firebase Auth REST endpoints (sign-in, token refresh).
+  "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com",
+  // The Firebase auth handler iframe + Google account chooser.
+  "frame-src 'self' https://cashraja-prod.firebaseapp.com https://accounts.google.com",
   "object-src 'none'",
   "base-uri 'self'",
   "frame-ancestors 'none'",
