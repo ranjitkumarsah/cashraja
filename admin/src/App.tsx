@@ -21,6 +21,7 @@ import { AdminsPage } from './features/admins/AdminsPage';
 import { NotificationsPage } from './features/notifications/NotificationsPage';
 import { PublicLayout } from './features/public/PublicLayout';
 import { WebLoginPage } from './features/webauth/WebLoginPage';
+import { WebHome } from './features/webauth/WebHome';
 import { LandingPage } from './features/landing/LandingPage';
 import { PrivacyPage } from './features/public/PrivacyPage';
 import { TermsPage } from './features/public/TermsPage';
@@ -61,8 +62,9 @@ export function AppRoutes() {
         <Route path="faq" element={<FaqPage />} />
       </Route>
 
-      {/* Web user sign-in (full-screen; real Google auth wired in phase W2). */}
+      {/* Web user app — Google sign-in + the signed-in home (self-guarded). */}
       <Route path="login" element={<WebLoginPage />} />
+      <Route path="home" element={<WebHome />} />
 
       {/* Admin console — auth-gated, re-based under /admin. */}
       <Route path="admin">
