@@ -41,7 +41,10 @@ export function securityHeaders(isTls: boolean) {
     res.setHeader('X-DNS-Prefetch-Control', 'off');
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
-    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    // 'same-origin-allow-popups' (not 'same-origin') so Firebase signInWithPopup
+    // can talk back to the opener window — otherwise the OAuth popup resolves as
+    // 'auth/popup-closed-by-user'.
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
     if (isTls) {
