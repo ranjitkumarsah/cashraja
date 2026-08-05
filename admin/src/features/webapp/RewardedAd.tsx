@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { monetagEnabled, showMonetagRewarded } from './monetag';
 
 /**
  * Rewarded-ad gate for the web app. Mirrors the Android rewarded-video flow:
@@ -21,12 +22,17 @@ export function useRewardedAd() {
   const [remaining, setRemaining] = useState(0);
 
   const watchAd = useCallback(
-    (seconds = 12) =>
-      new Promise<boolean>((resolve) => {
+    (seconds = 12): Promise<boolean> => {
+      // Real rewarded ad when a Monetag zone is configured (it renders its own
+      // UI, so we don't show the placeholder overlay). Otherwise fall back to
+      // the house countdown panel below.
+      if (monetagEnabled) return showMonetagRewarded();
+      return new Promise<boolean>((resolve) => {
         resolverRef.current = resolve;
         setRemaining(seconds);
         setOpen(true);
-      }),
+      });
+    },
     [],
   );
 
