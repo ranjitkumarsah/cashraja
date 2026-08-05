@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { SeoManager } from './lib/seo/SeoManager';
 import { AppShell } from './components/layout/AppShell';
 import { RedirectIfAuthed, RequireAuth, RequireRole } from './components/guards';
 import { ToastProvider } from './components/ui/Toast';
@@ -96,6 +97,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppProviders>
+        <SeoManager />
         <AppRoutes />
       </AppProviders>
     </BrowserRouter>

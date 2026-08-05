@@ -66,6 +66,13 @@ async function bootstrap(): Promise<void> {
       const p = req.path;
       if (p.startsWith('/api') || p === '/healthz' || p === '/readyz') return next();
       if (extname(p)) return next();
+      // Serve the prerendered static page for a public route (SEO: crawlers get
+      // real HTML + head), when one exists. Safe-char paths only (no traversal).
+      // Everything else (the app + /admin/*) gets the SPA shell.
+      if (p !== '/' && /^\/[a-zA-Z0-9\-/]+$/.test(p)) {
+        const prerendered = join(clientDir, p, 'index.html');
+        if (existsSync(prerendered)) return res.sendFile(prerendered);
+      }
       res.sendFile(indexHtml);
     });
   }
