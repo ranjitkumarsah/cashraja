@@ -1,78 +1,54 @@
 /**
- * Monetag rewarded-ad integration (web).
+ * Monetag integration (web). This account offers no rewarded-video SDK, so we
+ * use the two formats that fit our rules:
  *
- * We use ONLY Monetag's "Rewarded Interstitial" format — an opt-in ad the user
- * triggers by tapping an earn button. No popunder / push / auto-interstitial
- * formats (they hurt SEO + UX). The SDK exposes a global `show_<zone>()` that
- * returns a Promise resolving when the user completes the ad, which is exactly
- * the gate `useRewardedAd().watchAd()` expects.
+ *  1. DIRECT LINK as the earn gate ("rewarded-ish"): tapping an earn button
+ *     opens a Monetag sponsor link in a new tab and starts an in-app countdown;
+ *     coins are credited only after the countdown completes. It's a click-task,
+ *     not a watched video — but it keeps the "do something to earn" rule and
+ *     pays real Monetag revenue. Opening a new tab isn't subject to our CSP, so
+ *     the Direct Link needs NO CSP change.
  *
- * Turn it on by setting build-time env vars (on Render / .env):
- *   VITE_MONETAG_ZONE=123456              // your Rewarded Interstitial zone id
- *   VITE_MONETAG_SDK_SRC=https://…/sdk.js // the src from the tag Monetag gives you
+ *  2. VIGNETTE BANNER for passive revenue, loaded ONLY on the signed-in web app
+ *     (never the public SEO pages). Better-Ads compliant, least intrusive.
  *
- * When VITE_MONETAG_ZONE is unset, `monetagEnabled` is false and the app falls
- * back to the house placeholder ad — so the site behaves normally until the
- * real zone is wired.
+ * Turn each on independently with build-time env vars (Render / .env):
+ *   VITE_MONETAG_DIRECT_URL=https://…        // Direct Link zone URL
+ *   VITE_MONETAG_BANNER_SRC=https://…/tag.js // Vignette zone script src
+ *   VITE_MONETAG_BANNER_ZONE=1234567         // (if the tag uses data-zone)
  *
- * CSP: once the SDK domain is known, add it to script-src / frame-src /
- * connect-src / img-src in backend security-headers.ts (see repo TODO).
+ * Unset = that piece stays off (Direct Link falls back to a house countdown;
+ * the banner simply doesn't load). The banner's script domain must be added to
+ * the CSP (script-src / frame-src / img-src / connect-src) in backend
+ * security-headers.ts before it will render.
  */
 const env = import.meta.env as Record<string, string | undefined>;
 
-const ZONE = env.VITE_MONETAG_ZONE?.trim() || '';
-const SDK_SRC = env.VITE_MONETAG_SDK_SRC?.trim() || 'https://libtl.com/sdk.js';
+const DIRECT_URL = env.VITE_MONETAG_DIRECT_URL?.trim() || '';
+const BANNER_SRC = env.VITE_MONETAG_BANNER_SRC?.trim() || '';
+const BANNER_ZONE = env.VITE_MONETAG_BANNER_ZONE?.trim() || '';
 
-/** True when a Monetag rewarded zone is configured at build time. */
-export const monetagEnabled = ZONE.length > 0;
+/** True when a Monetag Direct Link is configured (gates earns via a sponsor visit). */
+export const directLinkEnabled = DIRECT_URL.length > 0;
 
-/** The global function name the SDK installs (`data-sdk="show_<zone>"`). */
-const FN_NAME = `show_${ZONE}`;
+/** True when a Monetag banner (Vignette) script is configured. */
+export const bannerEnabled = BANNER_SRC.length > 0;
 
-let loadPromise: Promise<void> | null = null;
-
-/** Inject the Monetag SDK once; resolves when `window[show_<zone>]` is ready. */
-function loadSdk(): Promise<void> {
-  if (!monetagEnabled) return Promise.reject(new Error('Monetag not configured'));
-  if (loadPromise) return loadPromise;
-
-  loadPromise = new Promise<void>((resolve, reject) => {
-    const w = window as unknown as Record<string, unknown>;
-    if (typeof w[FN_NAME] === 'function') {
-      resolve();
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = SDK_SRC;
-    script.dataset.zone = ZONE;
-    script.dataset.sdk = FN_NAME;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => {
-      loadPromise = null;
-      reject(new Error('Monetag SDK failed to load'));
-    };
-    document.head.appendChild(script);
-  });
-
-  return loadPromise;
+/** Open the Monetag Direct Link in a new tab (the paid sponsor visit). */
+export function openMonetagDirectLink(): void {
+  if (!directLinkEnabled) return;
+  window.open(DIRECT_URL, '_blank', 'noopener,noreferrer');
 }
 
-/**
- * Show a Monetag rewarded ad. Resolves `true` only if the user completed it;
- * resolves `false` on any error or dismissal so the caller never credits coins
- * for an ad that didn't play.
- */
-export async function showMonetagRewarded(): Promise<boolean> {
-  if (!monetagEnabled) return false;
-  try {
-    await loadSdk();
-    const w = window as unknown as Record<string, unknown>;
-    const show = w[FN_NAME];
-    if (typeof show !== 'function') return false;
-    await (show as () => Promise<unknown>)();
-    return true;
-  } catch {
-    return false;
-  }
+let bannerLoaded = false;
+
+/** Inject the Vignette banner script once (call from the signed-in app only). */
+export function loadMonetagBanner(): void {
+  if (!bannerEnabled || bannerLoaded) return;
+  bannerLoaded = true;
+  const script = document.createElement('script');
+  script.src = BANNER_SRC;
+  if (BANNER_ZONE) script.dataset.zone = BANNER_ZONE;
+  script.async = true;
+  document.head.appendChild(script);
 }

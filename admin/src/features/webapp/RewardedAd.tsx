@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { monetagEnabled, showMonetagRewarded } from './monetag';
+import { directLinkEnabled, openMonetagDirectLink } from './monetag';
 
 /**
  * Rewarded-ad gate for the web app. Mirrors the Android rewarded-video flow:
@@ -23,14 +23,14 @@ export function useRewardedAd() {
 
   const watchAd = useCallback(
     (seconds = 12): Promise<boolean> => {
-      // Real rewarded ad when a Monetag zone is configured (it renders its own
-      // UI, so we don't show the placeholder overlay). Otherwise fall back to
-      // the house countdown panel below.
-      if (monetagEnabled) return showMonetagRewarded();
       return new Promise<boolean>((resolve) => {
         resolverRef.current = resolve;
         setRemaining(seconds);
         setOpen(true);
+        // When a Monetag Direct Link is configured, tapping an earn button opens
+        // the paid sponsor page in a new tab; the countdown below then gates the
+        // credit. Without it, the overlay is just a house placeholder.
+        if (directLinkEnabled) openMonetagDirectLink();
       });
     },
     [],
@@ -63,9 +63,11 @@ export function useRewardedAd() {
       <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/40">
         Sponsored
       </p>
-      <div className="mt-4 flex aspect-video w-full max-w-sm flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600/40 via-primary-800 to-primary-950 shadow-2xl ring-1 ring-white/10">
-        <span className="text-4xl">🎬</span>
-        <span className="mt-2 text-sm font-bold text-white/80">Advertisement</span>
+      <div className="mt-4 flex aspect-video w-full max-w-sm flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600/40 via-primary-800 to-primary-950 px-6 text-center shadow-2xl ring-1 ring-white/10">
+        <span className="text-4xl">{directLinkEnabled ? '🔗' : '🎬'}</span>
+        <span className="mt-2 text-sm font-bold text-white/80">
+          {directLinkEnabled ? 'View the sponsor page in the new tab' : 'Advertisement'}
+        </span>
       </div>
 
       {remaining > 0 ? (

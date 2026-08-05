@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import { Home, Gift, Wallet, Sparkles, User, Bell } from 'lucide-react';
 import { NavLink, Navigate, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { CoinMark } from '../../components/CoinMark';
 import { isWebAuthed } from '../webauth/web-auth';
 import { webApi } from '../webauth/web-api';
+import { loadMonetagBanner } from './monetag';
 
 /** Route guard for the signed-in web app. */
 export function WebRequireAuth() {
@@ -45,6 +47,12 @@ const TABS = [
  * scrollable area between them.
  */
 export function WebAppLayout() {
+  // Passive Monetag banner (Vignette) — signed-in app only, never public/SEO
+  // pages. No-op until VITE_MONETAG_BANNER_SRC is configured.
+  useEffect(() => {
+    loadMonetagBanner();
+  }, []);
+
   return (
     <div className="dark flex min-h-screen flex-col bg-primary-950 text-ink">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-primary-950/95 backdrop-blur">
