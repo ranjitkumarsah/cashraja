@@ -11,13 +11,10 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { CoinMark } from '../../components/CoinMark';
 import { FaqAccordion } from './FaqAccordion';
 import { useLandingStats } from './stats';
-
-// TODO: replace with the real Play Store URL once the app is published.
-//       Left as a placeholder so the CTA renders now; updated post-publish.
-const PLAY_STORE_URL = '#';
 
 interface Feature {
   icon: LucideIcon;
@@ -82,10 +79,10 @@ const STEPS: Step[] = [
   },
 ];
 
-function PlayStoreCta({ className }: { className?: string }) {
+function GetStartedCta({ className }: { className?: string }) {
   return (
-    <a
-      href={PLAY_STORE_URL}
+    <Link
+      to="/login"
       className={
         'inline-flex items-center justify-center gap-2.5 rounded-xl bg-gold-400 px-6 py-3.5 ' +
         'text-base font-semibold text-primary-950 shadow-lg shadow-gold-500/20 transition-colors ' +
@@ -94,9 +91,9 @@ function PlayStoreCta({ className }: { className?: string }) {
         (className ?? '')
       }
     >
-      <Smartphone className="size-5" aria-hidden="true" />
-      Get it on Google Play
-    </a>
+      Get Started
+      <ArrowRight className="size-5" aria-hidden="true" />
+    </Link>
   );
 }
 
@@ -134,7 +131,7 @@ export function LandingPage() {
             alive — then cash your coins in for digital gift cards.
           </p>
           <div className="mt-9">
-            <PlayStoreCta />
+            <GetStartedCta />
           </div>
           <p className="mt-4 text-xs text-indigo-300/70">
             Free to play · Gift-card rewards · Sign in with Google
@@ -239,7 +236,7 @@ export function LandingPage() {
             Download Cash Raja and turn your spare time into real gift cards.
           </p>
           <div className="mt-8">
-            <PlayStoreCta />
+            <GetStartedCta />
           </div>
         </div>
       </section>

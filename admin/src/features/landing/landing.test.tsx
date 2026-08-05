@@ -20,14 +20,16 @@ afterEach(() => {
 });
 
 describe('public marketing site', () => {
-  it('renders the landing hero and the Google Play CTA at /', async () => {
+  it('renders the landing hero and the Get Started CTA at /', async () => {
     stubStatsFetch({ total_users: 0, daily_active_users: 0, rewards_paid_rupees: 0 });
     renderApp('/');
 
     expect(await screen.findByRole('heading', { level: 1, name: /Cash Raja/ })).toBeInTheDocument();
     expect(screen.getByText('Play. Earn. Redeem real gift cards.')).toBeInTheDocument();
-    const ctas = screen.getAllByRole('link', { name: /Get it on Google Play/i });
+    const ctas = screen.getAllByRole('link', { name: /Get Started/i });
     expect(ctas.length).toBeGreaterThanOrEqual(1);
+    // CTAs point at the web sign-in.
+    ctas.forEach((cta) => expect(cta).toHaveAttribute('href', '/login'));
   });
 
   it('shows live stats with Indian grouping when the API returns non-zero figures', async () => {

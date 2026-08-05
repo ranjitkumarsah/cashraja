@@ -20,6 +20,7 @@ import { ConfigPage } from './features/config/ConfigPage';
 import { AdminsPage } from './features/admins/AdminsPage';
 import { NotificationsPage } from './features/notifications/NotificationsPage';
 import { PublicLayout } from './features/public/PublicLayout';
+import { WebLoginPage } from './features/webauth/WebLoginPage';
 import { LandingPage } from './features/landing/LandingPage';
 import { PrivacyPage } from './features/public/PrivacyPage';
 import { TermsPage } from './features/public/TermsPage';
@@ -59,6 +60,9 @@ export function AppRoutes() {
         <Route path="about" element={<AboutPage />} />
         <Route path="faq" element={<FaqPage />} />
       </Route>
+
+      {/* Web user sign-in (full-screen; real Google auth wired in phase W2). */}
+      <Route path="login" element={<WebLoginPage />} />
 
       {/* Admin console — auth-gated, re-based under /admin. */}
       <Route path="admin">

@@ -1,6 +1,6 @@
 import { cn } from '../lib/cn';
 
-/** Gold-rimmed rupee coin — the "Cash Raja" mark. */
+/** Gold-rimmed coin with a bold "C" — the "Cash Raja" mark. */
 export function CoinMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={cn('size-8', className)} aria-hidden="true">
@@ -16,12 +16,12 @@ export function CoinMark({ className }: { className?: string }) {
         x="16"
         y="21.5"
         textAnchor="middle"
-        fontFamily="Georgia, serif"
-        fontSize="15"
-        fontWeight="bold"
+        fontFamily="Manrope, Inter, system-ui, sans-serif"
+        fontSize="16"
+        fontWeight="800"
         fill="url(#coin-gold)"
       >
-        ₹
+        C
       </text>
     </svg>
   );

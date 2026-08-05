@@ -16,6 +16,13 @@ function BrandMark({ className }: { className?: string }) {
   );
 }
 
+/** Front-facing pages shown in the top navigation. */
+const NAV_LINKS = [
+  { to: '/', label: 'Home' },
+  { to: '/about', label: 'About' },
+  { to: '/faq', label: 'FAQ' },
+] as const;
+
 const FOOTER_LINKS = [
   { to: '/privacy', label: 'Privacy Policy' },
   { to: '/terms', label: 'Terms & Conditions' },
@@ -25,23 +32,35 @@ const FOOTER_LINKS = [
 
 /**
  * Public shell for the marketing landing + content pages. A dark indigo brand
- * bar (with a Login link to the admin console) and a matching footer wrap every
- * public route; the page content area between them is theme-aware.
+ * bar (front-facing links + a top-right Log in button) and a matching footer
+ * wrap every public route; the page content area between them is theme-aware.
  */
 export function PublicLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-surface">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-primary-950/95 backdrop-blur supports-[backdrop-filter]:bg-primary-950/80">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
           <BrandMark />
-          <nav className="flex items-center gap-6" aria-label="Public navigation">
+          <div className="flex items-center gap-4 sm:gap-7">
+            <nav className="hidden items-center gap-7 sm:flex" aria-label="Public navigation">
+              {NAV_LINKS.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="text-sm font-medium text-indigo-200 transition-colors hover:text-white"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+            {/* Log in — the web user sign-in (built in the next phase). Top-right. */}
             <Link
-              to="/faq"
-              className="text-sm font-medium text-indigo-200 transition-colors hover:text-white"
+              to="/login"
+              className="rounded-full bg-gold-400 px-4 py-2 text-sm font-extrabold text-primary-950 shadow-sm transition-colors hover:bg-gold-300"
             >
-              FAQ
+              Log in
             </Link>
-          </nav>
+          </div>
         </div>
       </header>
 
