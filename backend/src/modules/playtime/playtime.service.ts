@@ -32,8 +32,10 @@ export type CreditOutcome =
 @Injectable()
 export class PlaytimeService {
   private readonly logger = new Logger(PlaytimeService.name);
-  private readonly appKey: string;
-  private readonly secretKeys: string[];
+  private readonly androidKey: string;
+  private readonly androidSecrets: string[];
+  private readonly webKey: string;
+  private readonly webSecret: string;
 
   constructor(
     config: ConfigService,
@@ -41,29 +43,45 @@ export class PlaytimeService {
     private readonly ledger: LedgerService,
     @Inject(NOTIFICATION_HOOK) private readonly notifications: NotificationHook,
   ) {
-    this.appKey = config.get<string>('PLAYTIME_APP_KEY') ?? '';
-    this.secretKeys = (config.get<string>('PLAYTIME_SECRET_KEYS') ?? '')
+    this.androidKey = config.get<string>('PLAYTIME_APP_KEY') ?? '';
+    this.androidSecrets = (config.get<string>('PLAYTIME_SECRET_KEYS') ?? '')
       .split(',')
       .map((k) => k.trim())
       .filter((k) => k.length > 0);
-  }
-
-  /** Credentials present → the callback can verify + the wall can be built. */
-  get configured(): boolean {
-    return this.appKey.length > 0 && this.secretKeys.length > 0;
+    this.webKey = config.get<string>('PLAYTIME_WEB_APP_KEY') ?? '';
+    this.webSecret = config.get<string>('PLAYTIME_WEB_SECRET') ?? '';
   }
 
   /**
-   * PlaytimeAds signature = sha1(user_id + offer_id + amount + APP_KEY + SECRET_KEY).
-   * Accepts a match against ANY configured secret key (dashboard exposes both an
-   * API secret and a postback secret; we don't assume which one signs).
+   * (appKey, secret) pairs a postback signature is checked against — one per
+   * configured Playtime app (Android SDK + Web iFrame). The signature bakes in
+   * the app key, so each platform's completions verify with its own pair.
+   */
+  private signingPairs(): { appKey: string; secret: string }[] {
+    const pairs: { appKey: string; secret: string }[] = [];
+    for (const secret of this.androidSecrets) {
+      if (this.androidKey) pairs.push({ appKey: this.androidKey, secret });
+    }
+    if (this.webKey && this.webSecret) pairs.push({ appKey: this.webKey, secret: this.webSecret });
+    return pairs;
+  }
+
+  /** Any Playtime app configured → the callback can verify completions. */
+  get configured(): boolean {
+    return this.signingPairs().length > 0;
+  }
+
+  /**
+   * PlaytimeAds signature = sha1(user_id + offer_id + amount + APP_KEY + SECRET).
+   * A completion may come from the Android or the Web app, so we accept a match
+   * against ANY configured (appKey, secret) pair.
    */
   verifySignature(cb: PlaytimeCallback): boolean {
-    if (!this.configured || !cb.signature) return false;
+    if (!cb.signature) return false;
     const provided = Buffer.from(cb.signature.toLowerCase(), 'utf8');
-    return this.secretKeys.some((secret) => {
+    return this.signingPairs().some(({ appKey, secret }) => {
       const expected = createHash('sha1')
-        .update(`${cb.userId}${cb.offerId}${cb.amount}${this.appKey}${secret}`)
+        .update(`${cb.userId}${cb.offerId}${cb.amount}${appKey}${secret}`)
         .digest('hex');
       const exp = Buffer.from(expected, 'utf8');
       return exp.length === provided.length && timingSafeEqual(exp, provided);
@@ -105,12 +123,23 @@ export class PlaytimeService {
   }
 
   /**
-   * Android SDK application key the app inits the offerwall with (the same App
-   * Key that signs the postback), or null when Playtime isn't configured. The
-   * SDK renders the wall natively; rewards still credit via the S2S callback.
-   * Not secret — it ships in the app.
+   * Android SDK application key the mobile app inits the offerwall with (or null
+   * when unset). The SDK renders the wall natively; rewards credit via the S2S
+   * callback. Not secret — it ships in the app.
    */
   androidAppKey(): string | null {
-    return this.configured ? this.appKey : null;
+    return this.androidKey || null;
+  }
+
+  /**
+   * Hosted Web iFrame offerwall URL for a user (or null when the web app isn't
+   * configured). The web app embeds this; completions credit via the callback.
+   */
+  webWallUrl(userId: string): string | null {
+    if (!this.webKey) return null;
+    const url = new URL('https://web.playtimeads.com/index.php');
+    url.searchParams.set('app_id', this.webKey);
+    url.searchParams.set('user_id', userId);
+    return url.toString();
   }
 }

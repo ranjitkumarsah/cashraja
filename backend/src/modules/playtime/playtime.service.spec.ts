@@ -6,13 +6,18 @@ import { LedgerService } from '../ledger/ledger.service';
 import { NotificationHook } from '../notifications/notification-hook';
 import { PlaytimeCallback, PlaytimeService } from './playtime.service';
 
-const APP_KEY = 'fbb8dbc4def00504';
-const SECRET_A = 'YLGEOCTTTOCSWPZ2';
-const SECRET_B = 'YO30FXPQK62YCZTAR67NEOL2K';
+const ANDROID_KEY = 'fbb8dbc4def00504';
+const ANDROID_SECRET = 'YLGEOCTTTOCSWPZ2';
+const WEB_KEY = '739339548770a4b2';
+const WEB_SECRET = 'IWUA7KJOYK8QFW6B6WWEXJW5LRCI6J';
 
-function sign(cb: { userId: string; offerId: string; amount: string }, secret: string): string {
+function sign(
+  cb: { userId: string; offerId: string; amount: string },
+  appKey: string,
+  secret: string,
+): string {
   return createHash('sha1')
-    .update(`${cb.userId}${cb.offerId}${cb.amount}${APP_KEY}${secret}`)
+    .update(`${cb.userId}${cb.offerId}${cb.amount}${appKey}${secret}`)
     .digest('hex');
 }
 
@@ -46,8 +51,8 @@ function fakePrisma(userExists: boolean): PrismaService {
 }
 
 function makeService(opts: {
-  secrets?: string;
-  appKey?: string;
+  android?: boolean;
+  web?: boolean;
   userExists?: boolean;
   ledger?: FakeLedger;
   notifications?: FakeNotifications;
@@ -56,8 +61,10 @@ function makeService(opts: {
   const notifications = opts.notifications ?? new FakeNotifications();
   const service = new PlaytimeService(
     makeConfig({
-      PLAYTIME_APP_KEY: opts.appKey ?? APP_KEY,
-      PLAYTIME_SECRET_KEYS: opts.secrets ?? `${SECRET_A},${SECRET_B}`,
+      PLAYTIME_APP_KEY: opts.android === false ? '' : ANDROID_KEY,
+      PLAYTIME_SECRET_KEYS: opts.android === false ? '' : ANDROID_SECRET,
+      PLAYTIME_WEB_APP_KEY: opts.web ? WEB_KEY : '',
+      PLAYTIME_WEB_SECRET: opts.web ? WEB_SECRET : '',
     }),
     fakePrisma(opts.userExists ?? true),
     ledger as unknown as LedgerService,
@@ -69,50 +76,51 @@ function makeService(opts: {
 const base = { userId: 'u1', offerId: 'o1', amount: '100' };
 
 describe('PlaytimeService.verifySignature', () => {
-  it('accepts a signature made with EITHER configured secret', () => {
-    const { service } = makeService({});
-    for (const secret of [SECRET_A, SECRET_B]) {
-      const cb: PlaytimeCallback = { ...base, signature: sign(base, secret) };
-      expect(service.verifySignature(cb)).toBe(true);
-    }
+  it('accepts an Android-app-signed postback', () => {
+    const { service } = makeService({ web: true });
+    expect(
+      service.verifySignature({ ...base, signature: sign(base, ANDROID_KEY, ANDROID_SECRET) }),
+    ).toBe(true);
   });
 
-  it('accepts uppercase hex (case-insensitive compare)', () => {
-    const { service } = makeService({});
-    const cb: PlaytimeCallback = { ...base, signature: sign(base, SECRET_A).toUpperCase() };
-    expect(service.verifySignature(cb)).toBe(true);
+  it('accepts a Web-app-signed postback (different key + secret)', () => {
+    const { service } = makeService({ web: true });
+    expect(service.verifySignature({ ...base, signature: sign(base, WEB_KEY, WEB_SECRET) })).toBe(
+      true,
+    );
   });
 
-  it('rejects a wrong/forged signature', () => {
-    const { service } = makeService({});
+  it('rejects a forged / cross-mismatched signature', () => {
+    const { service } = makeService({ web: true });
     expect(service.verifySignature({ ...base, signature: 'deadbeef' })).toBe(false);
-    // right shape, wrong secret
-    expect(service.verifySignature({ ...base, signature: sign(base, 'not-a-secret') })).toBe(false);
+    // Android key with the web secret must NOT verify.
+    expect(
+      service.verifySignature({ ...base, signature: sign(base, ANDROID_KEY, WEB_SECRET) }),
+    ).toBe(false);
   });
 
-  it('rejects everything when unconfigured (no secrets)', () => {
-    const { service } = makeService({ secrets: '' });
-    expect(service.verifySignature({ ...base, signature: sign(base, SECRET_A) })).toBe(false);
+  it('rejects everything when no Playtime app is configured', () => {
+    const { service } = makeService({ android: false, web: false });
+    expect(
+      service.verifySignature({ ...base, signature: sign(base, ANDROID_KEY, ANDROID_SECRET) }),
+    ).toBe(false);
   });
 });
 
 describe('PlaytimeService.credit', () => {
-  it('credits the amount as coins via the ledger + notifies once', async () => {
+  it('credits the amount as coins + notifies once', async () => {
     const { service, ledger, notifications } = makeService({});
-    const out = await service.credit({ ...base, signature: 'x' });
-    expect(out).toBe('credited');
+    expect(await service.credit({ ...base, signature: 'x' })).toBe('credited');
     expect(ledger.calls).toBe(1);
     expect(notifications.count).toBe(1);
   });
 
   it('is idempotent: a duplicate postback does not re-notify', async () => {
-    const ledger = new FakeLedger();
-    const notifications = new FakeNotifications();
-    const { service } = makeService({ ledger, notifications });
+    const { service, notifications } = makeService({});
     const cb: PlaytimeCallback = { ...base, signature: 'x', taskId: 't1' };
     expect(await service.credit(cb)).toBe('credited');
     expect(await service.credit(cb)).toBe('duplicate');
-    expect(notifications.count).toBe(1); // only the first credit notified
+    expect(notifications.count).toBe(1);
   });
 
   it('does not credit an unknown user', async () => {
@@ -124,28 +132,30 @@ describe('PlaytimeService.credit', () => {
   it('rejects a non-positive / non-numeric amount', async () => {
     const { service } = makeService({});
     expect(await service.credit({ ...base, amount: '0', signature: 'x' })).toBe('invalid_amount');
-    expect(await service.credit({ ...base, amount: 'abc', signature: 'x' })).toBe('invalid_amount');
+    expect(await service.credit({ ...base, amount: 'x', signature: 'x' })).toBe('invalid_amount');
   });
 
   it('uses LedgerSourceType.offer', async () => {
     const ledger = new FakeLedger();
-    const recordSpy = jest.spyOn(ledger, 'record');
+    const spy = jest.spyOn(ledger, 'record');
     const { service } = makeService({ ledger });
     await service.credit({ ...base, signature: 'x' });
-    expect(recordSpy).toHaveBeenCalledWith(
+    expect(spy).toHaveBeenCalledWith(
       expect.objectContaining({ sourceType: LedgerSourceType.offer, amount: 100 }),
     );
   });
 });
 
-describe('PlaytimeService.androidAppKey', () => {
-  it('returns null when not configured (no secrets)', () => {
-    const { service } = makeService({ secrets: '' });
-    expect(service.androidAppKey()).toBeNull();
+describe('PlaytimeService app keys / wall url', () => {
+  it('androidAppKey returns the SDK app key, or null when unset', () => {
+    expect(makeService({}).service.androidAppKey()).toBe(ANDROID_KEY);
+    expect(makeService({ android: false }).service.androidAppKey()).toBeNull();
   });
 
-  it('returns the App Key (same one that signs the postback) when configured', () => {
-    const { service } = makeService({});
-    expect(service.androidAppKey()).toBe(APP_KEY);
+  it('webWallUrl builds the iframe URL when the web app is configured', () => {
+    expect(makeService({ web: true }).service.webWallUrl('u1')).toBe(
+      `https://web.playtimeads.com/index.php?app_id=${WEB_KEY}&user_id=u1`,
+    );
+    expect(makeService({ web: false }).service.webWallUrl('u1')).toBeNull();
   });
 });

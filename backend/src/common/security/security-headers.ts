@@ -27,8 +27,9 @@ const CONTENT_SECURITY_POLICY = [
   "font-src 'self' data:",
   // Firebase Auth REST endpoints (sign-in, token refresh).
   "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com",
-  // The Firebase auth handler iframe + Google account chooser.
-  "frame-src 'self' https://cashraja-prod.firebaseapp.com https://accounts.google.com",
+  // The Firebase auth handler iframe + Google account chooser + the embedded
+  // PlaytimeAds web offerwall.
+  "frame-src 'self' https://cashraja-prod.firebaseapp.com https://accounts.google.com https://web.playtimeads.com",
   "object-src 'none'",
   "base-uri 'self'",
   "frame-ancestors 'none'",

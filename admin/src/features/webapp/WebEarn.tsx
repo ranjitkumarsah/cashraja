@@ -15,6 +15,12 @@ interface ManualOffer {
 const SITE = 'https://cashraja.graduatedcoder.in';
 
 export function WebEarn() {
+  const [wallOpen, setWallOpen] = useState(false);
+  const wall = useQuery({
+    queryKey: ['web', 'playtime-wall'],
+    queryFn: async () =>
+      (await webApi.get('/playtime/web-wall')).data as { available: boolean; url: string | null },
+  });
   const code = useQuery({
     queryKey: ['web', 'referral-code'],
     queryFn: async () => (await webApi.get('/referral/my-code')).data as { code: string },
@@ -24,9 +30,50 @@ export function WebEarn() {
     queryFn: async () => (await webApi.get('/manual-offers')).data as ManualOffer[],
   });
 
+  const wallUrl = wall.data?.available ? wall.data.url : null;
+
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-extrabold text-white">Earn coins</h1>
+
+      {wallUrl && (
+        <button
+          type="button"
+          onClick={() => setWallOpen(true)}
+          className="flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-600/40 to-primary-900 p-5 text-left shadow-lg transition-transform hover:scale-[1.01]"
+        >
+          <span className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl bg-gold-400/15 text-2xl">
+            🎮
+          </span>
+          <span>
+            <span className="block font-extrabold text-white">Play &amp; earn</span>
+            <span className="block text-sm text-indigo-200/80">
+              Install apps, play games and complete offers for coins.
+            </span>
+          </span>
+        </button>
+      )}
+
+      {wallOpen && wallUrl && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-primary-950">
+          <div className="flex h-12 items-center justify-between border-b border-white/10 px-4">
+            <span className="text-sm font-bold text-white">Play &amp; earn</span>
+            <button
+              type="button"
+              onClick={() => setWallOpen(false)}
+              className="rounded-full border border-white/15 px-3 py-1 text-sm font-semibold text-indigo-200 hover:bg-white/5"
+            >
+              Close
+            </button>
+          </div>
+          <iframe
+            title="Offerwall"
+            src={wallUrl}
+            className="min-h-0 flex-1 border-0"
+            allow="clipboard-write"
+          />
+        </div>
+      )}
 
       <ReferralCard code={code.data?.code} />
 

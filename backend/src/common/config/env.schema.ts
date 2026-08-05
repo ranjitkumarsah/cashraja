@@ -60,6 +60,10 @@ export const envSchema = z
     // be accepted (either match credits).
     PLAYTIME_APP_KEY: z.string().default(''),
     PLAYTIME_SECRET_KEYS: z.string().default(''),
+    // PlaytimeAds Web (iFrame) offerwall — its own app key + callback secret.
+    // Postbacks are verified against whichever app (Android or Web) signed them.
+    PLAYTIME_WEB_APP_KEY: z.string().default(''),
+    PLAYTIME_WEB_SECRET: z.string().default(''),
     APPLOVIN_CALLBACK_TOKEN: z.string().default(''),
     LEVELPLAY_PRIVATE_KEY: z.string().default(''),
     ADMOB_SSV_KEY_SERVER_URL: z.union([z.string().url(), z.literal('')]).default(''),

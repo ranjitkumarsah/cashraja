@@ -59,4 +59,12 @@ export class PlaytimeController {
     const appKey = this.playtime.androidAppKey();
     return { available: appKey != null, appKey };
   }
+
+  @Get('web-wall')
+  @UseGuards(JwtAuthGuard)
+  @ApiOkResponse({ description: 'Hosted web offerwall URL for the signed-in user.' })
+  webWall(@CurrentUser() user: AuthenticatedUser): { available: boolean; url: string | null } {
+    const url = this.playtime.webWallUrl(user.id);
+    return { available: url != null, url };
+  }
 }
