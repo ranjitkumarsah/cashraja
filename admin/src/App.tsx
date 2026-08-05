@@ -42,6 +42,9 @@ const WebRewards = lazy(() =>
 const WebProfile = lazy(() =>
   import('./features/webapp/WebProfile').then((m) => ({ default: m.WebProfile })),
 );
+const WebInbox = lazy(() =>
+  import('./features/webapp/WebInbox').then((m) => ({ default: m.WebInbox })),
+);
 import { LandingPage } from './features/landing/LandingPage';
 import { PrivacyPage } from './features/public/PrivacyPage';
 import { TermsPage } from './features/public/TermsPage';
@@ -92,6 +95,7 @@ export function AppRoutes() {
           <Route path="earn" element={<WebEarn />} />
           <Route path="wallet" element={<WebWallet />} />
           <Route path="rewards" element={<WebRewards />} />
+          <Route path="inbox" element={<WebInbox />} />
           <Route path="profile" element={<WebProfile />} />
         </Route>
       </Route>

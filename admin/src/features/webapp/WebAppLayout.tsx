@@ -1,11 +1,34 @@
-import { Home, Gift, Wallet, Sparkles, User } from 'lucide-react';
+import { Home, Gift, Wallet, Sparkles, User, Bell } from 'lucide-react';
 import { NavLink, Navigate, Outlet } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { CoinMark } from '../../components/CoinMark';
 import { isWebAuthed } from '../webauth/web-auth';
+import { webApi } from '../webauth/web-api';
 
 /** Route guard for the signed-in web app. */
 export function WebRequireAuth() {
   return isWebAuthed() ? <Outlet /> : <Navigate to="/login" replace />;
+}
+
+function InboxBell() {
+  const unread = useQuery({
+    queryKey: ['web', 'inbox', 'unread'],
+    queryFn: async () =>
+      ((await webApi.get('/notifications', { params: { limit: 1 } })).data?.unread_count as number) ??
+      0,
+    refetchInterval: 60_000,
+  });
+  const count = unread.data ?? 0;
+  return (
+    <NavLink to="/inbox" className="relative p-1.5 text-indigo-200 hover:text-white" aria-label="Notifications">
+      <Bell className="size-6" />
+      {count > 0 && (
+        <span className="absolute right-0 top-0 flex min-w-4 items-center justify-center rounded-full bg-gold-400 px-1 text-[10px] font-extrabold text-primary-950">
+          {count > 9 ? '9+' : count}
+        </span>
+      )}
+    </NavLink>
+  );
 }
 
 const TABS = [
@@ -25,13 +48,14 @@ export function WebAppLayout() {
   return (
     <div className="dark flex min-h-screen flex-col bg-primary-950 text-ink">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-primary-950/95 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-3xl items-center px-4">
+        <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between px-4">
           <NavLink to="/home" className="flex items-center gap-2.5" aria-label="Cash Raja home">
             <CoinMark className="size-7" />
             <span className="text-base font-bold tracking-tight text-white">
               Cash <span className="text-gold-300">Raja</span>
             </span>
           </NavLink>
+          <InboxBell />
         </div>
       </header>
 
