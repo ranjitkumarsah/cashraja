@@ -35,12 +35,44 @@ const CONTENT_SECURITY_POLICY = [
   "frame-ancestors 'none'",
 ].join('; ');
 
+/**
+ * The Monetag Vignette banner runs here, inside a same-origin iframe that the
+ * web app sandboxes to an OPAQUE origin — so ad scripts cannot read our auth
+ * tokens (localStorage) or touch the app DOM. Because that isolation contains
+ * the blast radius, this one route gets a permissive CSP (ad creatives + the
+ * SDK load from many rotating https domains) and is framable by our own origin.
+ * The main app CSP above stays strict.
+ */
+const AD_FRAME_PATH = '/monetag-vignette.html';
+const AD_FRAME_CSP = [
+  "default-src 'self' https:",
+  "script-src 'self' 'unsafe-inline' https:",
+  "style-src 'self' 'unsafe-inline' https:",
+  "img-src 'self' data: https:",
+  "font-src 'self' data: https:",
+  "connect-src 'self' https:",
+  "frame-src https:",
+  "frame-ancestors 'self'",
+].join('; ');
+
 export function securityHeaders(isTls: boolean) {
-  return (_req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-DNS-Prefetch-Control', 'off');
     res.setHeader('Referrer-Policy', 'no-referrer');
+
+    if (req.path === AD_FRAME_PATH) {
+      // SAMEORIGIN (not DENY) so the app can embed this sandboxed ad iframe.
+      res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+      res.setHeader('Content-Security-Policy', AD_FRAME_CSP);
+      if (isTls) {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+      }
+      next();
+      return;
+    }
+
+    res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
     // 'same-origin-allow-popups' (not 'same-origin') so Firebase signInWithPopup
     // can talk back to the opener window — otherwise the OAuth popup resolves as
