@@ -1,0 +1,64 @@
+import { Home, Gift, Wallet, Sparkles, User } from 'lucide-react';
+import { NavLink, Navigate, Outlet } from 'react-router-dom';
+import { CoinMark } from '../../components/CoinMark';
+import { isWebAuthed } from '../webauth/web-auth';
+
+/** Route guard for the signed-in web app. */
+export function WebRequireAuth() {
+  return isWebAuthed() ? <Outlet /> : <Navigate to="/login" replace />;
+}
+
+const TABS = [
+  { to: '/home', label: 'Home', icon: Home },
+  { to: '/earn', label: 'Earn', icon: Sparkles },
+  { to: '/wallet', label: 'Wallet', icon: Wallet },
+  { to: '/rewards', label: 'Rewards', icon: Gift },
+  { to: '/profile', label: 'Profile', icon: User },
+] as const;
+
+/**
+ * Responsive shell for the signed-in web app: a slim top brand bar + a bottom
+ * tab bar (thumb-friendly on mobile, centred on desktop). Pages render in the
+ * scrollable area between them.
+ */
+export function WebAppLayout() {
+  return (
+    <div className="dark flex min-h-screen flex-col bg-primary-950 text-ink">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-primary-950/95 backdrop-blur">
+        <div className="mx-auto flex h-14 w-full max-w-3xl items-center px-4">
+          <NavLink to="/home" className="flex items-center gap-2.5" aria-label="Cash Raja home">
+            <CoinMark className="size-7" />
+            <span className="text-base font-bold tracking-tight text-white">
+              Cash <span className="text-gold-300">Raja</span>
+            </span>
+          </NavLink>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-24 pt-4">
+        <Outlet />
+      </main>
+
+      <nav
+        aria-label="Main"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-primary-950/95 backdrop-blur"
+      >
+        <div className="mx-auto flex w-full max-w-3xl items-stretch justify-around">
+          {TABS.map((tab) => (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              className={({ isActive }) =>
+                'flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition-colors ' +
+                (isActive ? 'text-gold-300' : 'text-indigo-300/70 hover:text-white')
+              }
+            >
+              <tab.icon className="size-5" aria-hidden="true" />
+              {tab.label}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+    </div>
+  );
+}

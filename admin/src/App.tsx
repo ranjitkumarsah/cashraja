@@ -21,7 +21,12 @@ import { AdminsPage } from './features/admins/AdminsPage';
 import { NotificationsPage } from './features/notifications/NotificationsPage';
 import { PublicLayout } from './features/public/PublicLayout';
 import { WebLoginPage } from './features/webauth/WebLoginPage';
-import { WebHome } from './features/webauth/WebHome';
+import { WebRequireAuth, WebAppLayout } from './features/webapp/WebAppLayout';
+import { WebHome } from './features/webapp/WebHome';
+import { WebEarn } from './features/webapp/WebEarn';
+import { WebWallet } from './features/webapp/WebWallet';
+import { WebRewards } from './features/webapp/WebRewards';
+import { WebProfile } from './features/webapp/WebProfile';
 import { LandingPage } from './features/landing/LandingPage';
 import { PrivacyPage } from './features/public/PrivacyPage';
 import { TermsPage } from './features/public/TermsPage';
@@ -62,9 +67,17 @@ export function AppRoutes() {
         <Route path="faq" element={<FaqPage />} />
       </Route>
 
-      {/* Web user app — Google sign-in + the signed-in home (self-guarded). */}
+      {/* Web user app — Google sign-in + the signed-in, auth-gated experience. */}
       <Route path="login" element={<WebLoginPage />} />
-      <Route path="home" element={<WebHome />} />
+      <Route element={<WebRequireAuth />}>
+        <Route element={<WebAppLayout />}>
+          <Route path="home" element={<WebHome />} />
+          <Route path="earn" element={<WebEarn />} />
+          <Route path="wallet" element={<WebWallet />} />
+          <Route path="rewards" element={<WebRewards />} />
+          <Route path="profile" element={<WebProfile />} />
+        </Route>
+      </Route>
 
       {/* Admin console — auth-gated, re-based under /admin. */}
       <Route path="admin">
