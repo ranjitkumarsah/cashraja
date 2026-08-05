@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy, Check } from 'lucide-react';
 import { webApi, webApiError } from '../webauth/web-api';
+import { useRewardedAd } from './RewardedAd';
+import { DailyRewardsSection } from './WebEarnGames';
+import { GameCard } from './WebMiniGame';
 
 interface ManualOffer {
   id: string;
@@ -15,6 +18,7 @@ interface ManualOffer {
 const SITE = 'https://cashraja.graduatedcoder.in';
 
 export function WebEarn() {
+  const { adNode, watchAd } = useRewardedAd();
   const [wallOpen, setWallOpen] = useState(false);
   const wall = useQuery({
     queryKey: ['web', 'playtime-wall'],
@@ -34,7 +38,12 @@ export function WebEarn() {
 
   return (
     <div className="space-y-6">
+      {adNode}
       <h1 className="text-xl font-extrabold text-white">Earn coins</h1>
+
+      <GameCard />
+
+      <DailyRewardsSection watchAd={watchAd} />
 
       {wallUrl && (
         <button
