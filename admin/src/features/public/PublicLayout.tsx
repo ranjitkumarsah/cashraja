@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Menu, X } from 'lucide-react';
 import { Link, Outlet } from 'react-router-dom';
 import { CoinMark } from '../../components/CoinMark';
 import { CONTACT_EMAIL } from './legalContent';
@@ -37,12 +39,13 @@ const FOOTER_LINKS = [
  * wrap every public route; the page content area between them is theme-aware.
  */
 export function PublicLayout() {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div className="flex min-h-screen flex-col bg-surface">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-primary-950/95 backdrop-blur supports-[backdrop-filter]:bg-primary-950/80">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
           <BrandMark />
-          <div className="flex items-center gap-4 sm:gap-7">
+          <div className="flex items-center gap-2 sm:gap-7">
             <nav className="hidden items-center gap-7 sm:flex" aria-label="Public navigation">
               {NAV_LINKS.map((link) => (
                 <Link
@@ -54,15 +57,45 @@ export function PublicLayout() {
                 </Link>
               ))}
             </nav>
-            {/* Log in — the web user sign-in (built in the next phase). Top-right. */}
+            {/* Log in — the web user sign-in. Top-right on every size. */}
             <Link
               to="/login"
               className="rounded-full bg-gold-400 px-4 py-2 text-sm font-extrabold text-primary-950 shadow-sm transition-colors hover:bg-gold-300"
             >
               Log in
             </Link>
+            {/* Mobile menu toggle — the nav links live in a dropdown on phones. */}
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label="Menu"
+              aria-expanded={menuOpen}
+              className="rounded-lg p-1.5 text-indigo-200 hover:text-white sm:hidden"
+            >
+              {menuOpen ? <X className="size-6" /> : <Menu className="size-6" />}
+            </button>
           </div>
         </div>
+
+        {menuOpen && (
+          <nav
+            className="border-t border-white/10 bg-primary-950/95 sm:hidden"
+            aria-label="Mobile navigation"
+          >
+            <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-1">
+              {NAV_LINKS.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => setMenuOpen(false)}
+                  className="border-b border-white/5 py-3 text-sm font-medium text-indigo-200 last:border-0 hover:text-white"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </nav>
+        )}
       </header>
 
       <main className="flex-1">
