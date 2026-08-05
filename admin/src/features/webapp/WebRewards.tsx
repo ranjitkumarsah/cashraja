@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Copy, Check } from 'lucide-react';
 import { webApi, webApiError } from '../webauth/web-api';
 
 interface GiftCard {
@@ -14,8 +15,21 @@ interface Redemption {
   coin_amount: number;
   status: string;
   created_at: string;
+  rejection_reason?: string | null;
   gift_card?: { brand: string; denomination: number };
+  /** Present (decrypted) only on the owner's issued redemption. */
+  gift_card_code?: string | null;
 }
+
+/** Friendlier labels for the raw backend status strings. */
+const STATUS_LABEL: Record<string, string> = {
+  requested: 'Pending review',
+  pending: 'Pending review',
+  approved: 'Processing',
+  issued: 'Delivered',
+  rejected: 'Rejected',
+};
+const statusLabel = (s: string) => STATUS_LABEL[s] ?? s.replace(/_/g, ' ');
 
 const BRANDS: Record<string, { label: string; color: string }> = {
   amazon: { label: 'Amazon', color: '#FF9900' },
@@ -142,26 +156,84 @@ export function WebRewards() {
 
       <h2 className="mt-8 mb-2 text-lg font-bold text-white">Your redemptions</h2>
       {history.data && history.data.length > 0 ? (
-        <ul className="divide-y divide-white/5 overflow-hidden rounded-2xl border border-white/10">
+        <ul className="space-y-3">
           {history.data.map((r) => (
-            <li key={r.id} className="flex items-center justify-between bg-white/[0.02] px-4 py-3">
-              <div>
-                <p className="text-sm font-semibold text-white">
-                  {r.gift_card ? `${brandLabel(r.gift_card.brand)} ₹${inr(r.gift_card.denomination)}` : 'Gift card'}
-                </p>
-                <p className="text-xs text-indigo-300/60">
-                  {new Date(r.created_at).toLocaleDateString('en-IN')}
-                </p>
-              </div>
-              <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold capitalize text-indigo-200">
-                {r.status.replace(/_/g, ' ')}
-              </span>
-            </li>
+            <RedemptionRow key={r.id} r={r} />
           ))}
         </ul>
       ) : (
         <p className="py-4 text-sm text-indigo-300/60">No redemptions yet.</p>
       )}
     </div>
+  );
+}
+
+function RedemptionRow({ r }: { r: Redemption }) {
+  const [copied, setCopied] = useState(false);
+  const isRejected = r.status === 'rejected';
+
+  async function copy() {
+    if (!r.gift_card_code) return;
+    await navigator.clipboard.writeText(r.gift_card_code).catch(() => undefined);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  }
+
+  return (
+    <li className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white">
+            {r.gift_card ? `${brandLabel(r.gift_card.brand)} ₹${inr(r.gift_card.denomination)}` : 'Gift card'}
+          </p>
+          <p className="text-xs text-indigo-300/60">
+            {new Date(r.created_at).toLocaleDateString('en-IN')}
+          </p>
+        </div>
+        <span
+          className={
+            'shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ' +
+            (r.status === 'issued'
+              ? 'bg-emerald-500/15 text-emerald-300'
+              : isRejected
+                ? 'bg-red-500/15 text-red-300'
+                : 'bg-white/10 text-indigo-200')
+          }
+        >
+          {statusLabel(r.status)}
+        </span>
+      </div>
+
+      {r.gift_card_code ? (
+        <div className="mt-3">
+          <p className="mb-1 text-xs font-medium text-indigo-300/70">Your gift card code</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 select-all break-all rounded-lg bg-primary-950/70 px-3 py-2 text-center text-base font-bold tracking-wide text-gold-300">
+              {r.gift_card_code}
+            </code>
+            <button
+              type="button"
+              onClick={copy}
+              aria-label="Copy code"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-gold-400 px-3 py-2 text-sm font-extrabold text-primary-950 hover:bg-gold-300"
+            >
+              {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-indigo-300/50">
+            Redeem it in your {r.gift_card ? brandLabel(r.gift_card.brand) : ''} account. Keep it private.
+          </p>
+        </div>
+      ) : isRejected && r.rejection_reason ? (
+        <p className="mt-2 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-200">
+          {r.rejection_reason}
+        </p>
+      ) : r.status !== 'issued' && !isRejected ? (
+        <p className="mt-2 text-xs text-indigo-300/50">
+          Your code will appear here once it's approved.
+        </p>
+      ) : null}
+    </li>
   );
 }
