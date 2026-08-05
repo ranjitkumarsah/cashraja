@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { SeoManager } from './lib/seo/SeoManager';
 import { AppShell } from './components/layout/AppShell';
@@ -20,18 +20,34 @@ import { ConfigPage } from './features/config/ConfigPage';
 import { AdminsPage } from './features/admins/AdminsPage';
 import { NotificationsPage } from './features/notifications/NotificationsPage';
 import { PublicLayout } from './features/public/PublicLayout';
-import { WebLoginPage } from './features/webauth/WebLoginPage';
-import { WebRequireAuth, WebAppLayout } from './features/webapp/WebAppLayout';
-import { WebHome } from './features/webapp/WebHome';
-import { WebEarn } from './features/webapp/WebEarn';
-import { WebWallet } from './features/webapp/WebWallet';
-import { WebRewards } from './features/webapp/WebRewards';
-import { WebProfile } from './features/webapp/WebProfile';
+// Web user app — lazy-loaded so the marketing pages don't ship Firebase + the
+// signed-in app in the initial bundle (keeps public Core Web Vitals fast).
+const WebLoginPage = lazy(() =>
+  import('./features/webauth/WebLoginPage').then((m) => ({ default: m.WebLoginPage })),
+);
+const WebRequireAuth = lazy(() =>
+  import('./features/webapp/WebAppLayout').then((m) => ({ default: m.WebRequireAuth })),
+);
+const WebAppLayout = lazy(() =>
+  import('./features/webapp/WebAppLayout').then((m) => ({ default: m.WebAppLayout })),
+);
+const WebHome = lazy(() => import('./features/webapp/WebHome').then((m) => ({ default: m.WebHome })));
+const WebEarn = lazy(() => import('./features/webapp/WebEarn').then((m) => ({ default: m.WebEarn })));
+const WebWallet = lazy(() =>
+  import('./features/webapp/WebWallet').then((m) => ({ default: m.WebWallet })),
+);
+const WebRewards = lazy(() =>
+  import('./features/webapp/WebRewards').then((m) => ({ default: m.WebRewards })),
+);
+const WebProfile = lazy(() =>
+  import('./features/webapp/WebProfile').then((m) => ({ default: m.WebProfile })),
+);
 import { LandingPage } from './features/landing/LandingPage';
 import { PrivacyPage } from './features/public/PrivacyPage';
 import { TermsPage } from './features/public/TermsPage';
 import { AboutPage } from './features/public/AboutPage';
 import { FaqPage } from './features/public/FaqPage';
+import { HowToEarnPage } from './features/public/HowToEarnPage';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -64,6 +80,7 @@ export function AppRoutes() {
         <Route path="privacy" element={<PrivacyPage />} />
         <Route path="terms" element={<TermsPage />} />
         <Route path="about" element={<AboutPage />} />
+        <Route path="how-to-earn" element={<HowToEarnPage />} />
         <Route path="faq" element={<FaqPage />} />
       </Route>
 
@@ -117,7 +134,15 @@ export default function App() {
     <BrowserRouter>
       <AppProviders>
         <SeoManager />
-        <AppRoutes />
+        <Suspense
+          fallback={
+            <div className="flex min-h-screen items-center justify-center bg-primary-950 text-sm text-indigo-300">
+              Loading…
+            </div>
+          }
+        >
+          <AppRoutes />
+        </Suspense>
       </AppProviders>
     </BrowserRouter>
   );

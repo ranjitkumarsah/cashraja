@@ -71,6 +71,24 @@ export const PAGE_SEO: Record<string, PageSeo> = {
     description:
       'Cash Raja is a free rewards app for India. Complete real tasks and offers to earn coins and redeem them for genuine digital gift cards. Learn how it works.',
   },
+  '/how-to-earn': {
+    path: '/how-to-earn',
+    title: 'How to Earn Free Gift Cards in India — Cash Raja Guide',
+    description:
+      'Step-by-step guide to earning free Amazon, Flipkart and Google Play gift cards in India with Cash Raja: complete offers, surveys, games and referrals, then redeem your coins.',
+    jsonLd: [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'HowTo',
+        name: 'How to earn free gift cards in India with Cash Raja',
+        step: [
+          { '@type': 'HowToStep', name: 'Sign in with Google', text: 'Create your free account with Google — one account per person.' },
+          { '@type': 'HowToStep', name: 'Earn coins', text: 'Complete offers, answer surveys, play games and refer friends to build your coin balance.' },
+          { '@type': 'HowToStep', name: 'Redeem gift cards', text: 'Exchange your coins for Amazon, Flipkart or Google Play gift cards in the Rewards store.' },
+        ],
+      },
+    ],
+  },
   '/faq': {
     path: '/faq',
     title: 'Cash Raja FAQ — How to Earn Coins & Redeem Gift Cards',

@@ -5,6 +5,7 @@ import { PublicLayout } from './features/public/PublicLayout';
 import { LandingPage } from './features/landing/LandingPage';
 import { AboutPage } from './features/public/AboutPage';
 import { FaqPage } from './features/public/FaqPage';
+import { HowToEarnPage } from './features/public/HowToEarnPage';
 import { PrivacyPage } from './features/public/PrivacyPage';
 import { TermsPage } from './features/public/TermsPage';
 import { PRERENDER_ROUTES, renderHead, seoFor, SITE_URL } from './lib/seo/seo-config';
@@ -21,6 +22,7 @@ function PublicRoutes() {
       <Route element={<PublicLayout />}>
         <Route index element={<LandingPage />} />
         <Route path="about" element={<AboutPage />} />
+        <Route path="how-to-earn" element={<HowToEarnPage />} />
         <Route path="faq" element={<FaqPage />} />
         <Route path="privacy" element={<PrivacyPage />} />
         <Route path="terms" element={<TermsPage />} />

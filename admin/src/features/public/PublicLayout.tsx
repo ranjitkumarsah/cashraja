@@ -19,6 +19,7 @@ function BrandMark({ className }: { className?: string }) {
 /** Front-facing pages shown in the top navigation. */
 const NAV_LINKS = [
   { to: '/', label: 'Home' },
+  { to: '/how-to-earn', label: 'How to earn' },
   { to: '/about', label: 'About' },
   { to: '/faq', label: 'FAQ' },
 ] as const;
