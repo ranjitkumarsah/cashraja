@@ -35,14 +35,22 @@ async function registerToken(): Promise<boolean> {
   if (!(await supported()) || Notification.permission !== 'granted') return false;
   try {
     const registration = await swRegistration();
+    // Wait for the SW to be active before asking for a token.
+    await navigator.serviceWorker.ready;
     const token = await getToken(getMessaging(app), {
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: registration,
     });
-    if (!token) return false;
+    if (!token) {
+      console.error('[webpush] getToken returned empty');
+      return false;
+    }
+    console.info('[webpush] FCM token acquired:', token.slice(0, 16) + '…');
     await webApi.post('/notifications/register-token', { token });
+    console.info('[webpush] token registered with backend');
     return true;
-  } catch {
+  } catch (e) {
+    console.error('[webpush] registerToken failed:', e);
     return false;
   }
 }
@@ -51,12 +59,16 @@ export type EnableResult = 'granted' | 'denied' | 'unsupported' | 'error';
 
 /** Prompt for permission (call from a user gesture) then register the token. */
 export async function enableWebPush(): Promise<EnableResult> {
-  if (!(await supported())) return 'unsupported';
+  if (!(await supported())) {
+    console.warn('[webpush] not supported in this browser/context');
+    return 'unsupported';
+  }
   try {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') return 'denied';
     return (await registerToken()) ? 'granted' : 'error';
-  } catch {
+  } catch (e) {
+    console.error('[webpush] enableWebPush failed:', e);
     return 'error';
   }
 }

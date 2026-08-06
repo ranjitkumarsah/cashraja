@@ -18,10 +18,13 @@ export function WebProfile() {
     const result = await enableWebPush();
     setPushState(pushPermission());
     setPushBusy(false);
-    if (result === 'denied') {
-      // Permission was blocked — the browser won't re-prompt; guide the user.
-      alert('Notifications are blocked. Enable them in your browser site settings.');
-    }
+    if (result === 'granted') alert('Notifications enabled ✓');
+    else if (result === 'denied')
+      alert('Notifications are blocked. Enable them in your browser site settings, then try again.');
+    else if (result === 'unsupported')
+      alert("Push isn't supported here. Use normal Chrome/Edge (not an in-app browser like Instagram/Facebook).");
+    else
+      alert('Could not set up notifications. Open the browser console (F12) and share any red "[webpush]" error.');
   }
 
   const me = useQuery({
@@ -74,9 +77,19 @@ export function WebProfile() {
             </div>
           </div>
           {pushState === 'granted' ? (
-            <span className="shrink-0 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300">
-              On
-            </span>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300">
+                On
+              </span>
+              <button
+                type="button"
+                onClick={enablePush}
+                disabled={pushBusy}
+                className="text-xs font-semibold text-indigo-300 underline hover:text-white disabled:opacity-60"
+              >
+                {pushBusy ? '…' : 'Re-sync'}
+              </button>
+            </div>
           ) : pushState === 'denied' ? (
             <span className="shrink-0 rounded-full bg-red-500/15 px-3 py-1 text-xs font-semibold text-red-300">
               Blocked
