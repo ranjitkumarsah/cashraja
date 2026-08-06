@@ -2,9 +2,6 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy, Check } from 'lucide-react';
 import { webApi, webApiError } from '../webauth/web-api';
-import { useRewardedAd } from './RewardedAd';
-import { DailyRewardsSection } from './WebEarnGames';
-import { GameCard } from './WebMiniGame';
 
 interface ManualOffer {
   id: string;
@@ -18,7 +15,6 @@ interface ManualOffer {
 const SITE = 'https://cashraja.graduatedcoder.in';
 
 export function WebEarn() {
-  const { adNode, watchAd } = useRewardedAd();
   const [wallOpen, setWallOpen] = useState(false);
   const wall = useQuery({
     queryKey: ['web', 'playtime-wall'],
@@ -38,26 +34,26 @@ export function WebEarn() {
 
   return (
     <div className="space-y-6">
-      {adNode}
       <h1 className="text-xl font-extrabold text-white">Earn coins</h1>
-
-      <GameCard />
-
-      <DailyRewardsSection watchAd={watchAd} />
 
       {wallUrl && (
         <button
           type="button"
           onClick={() => setWallOpen(true)}
-          className="flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-600/40 to-primary-900 p-5 text-left shadow-lg transition-transform hover:scale-[1.01]"
+          className="flex w-full items-center gap-4 rounded-2xl border border-gold-400/30 bg-gradient-to-br from-indigo-600/40 to-primary-900 p-5 text-left shadow-lg transition-transform hover:scale-[1.01]"
         >
           <span className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl bg-gold-400/15 text-2xl">
             🎮
           </span>
           <span>
-            <span className="block font-extrabold text-white">Play &amp; earn</span>
+            <span className="flex items-center gap-2 font-extrabold text-white">
+              Play &amp; earn
+              <span className="rounded-full bg-gold-400/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold-300">
+                Top earner
+              </span>
+            </span>
             <span className="block text-sm text-indigo-200/80">
-              Install apps, play games and complete offers for coins.
+              Install apps, play games and complete offers for the most coins.
             </span>
           </span>
         </button>
