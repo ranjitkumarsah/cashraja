@@ -3,19 +3,19 @@ import { HILLTOP_VAST_TAG, vastRewardedEnabled } from './hilltopads';
 import { loadIma, playVastRewarded } from './ima-rewarded';
 
 /**
- * Rewarded-ad gate for the web app. Mirrors the Android rewarded-video flow: the
- * user must complete the ad before the backend credit call runs (the backend
- * still enforces the daily cap + cooldown).
+ * Rewarded-ad gate for the web app. Owner rule: NO ad watched → NO reward.
  *
- * `watchAd()` resolves `true` only if the user completed the ad. Behaviour:
- * - HilltopAds VAST video (when VITE_HILLTOP_VAST_TAG is set): plays a real
- *   rewarded video; COMPLETE → true, SKIP → false, no-fill/error → falls back to
- *   the house countdown so earns are never blocked when video ads don't fill.
- * - Otherwise: the house countdown placeholder (watch through → Collect → true).
+ * `watchAd()` resolves `true` only if the user completed a real rewarded video:
+ * - HilltopAds VAST via IMA (when a VAST tag is set — it is by default):
+ *     COMPLETE → true (reward). SKIP → false (no reward). No-fill / error /
+ *     SDK-not-ready → shows a "no ad available" notice and resolves false (no
+ *     reward). There is deliberately NO free-countdown fallback here.
+ * - Only when NO VAST tag is configured (e.g. local dev) does it fall back to a
+ *   house countdown placeholder so the flow is testable.
  */
 export function useRewardedAd() {
   const resolverRef = useRef<((watched: boolean) => void) | null>(null);
-  const [mode, setMode] = useState<'idle' | 'countdown' | 'vast'>('idle');
+  const [mode, setMode] = useState<'idle' | 'countdown' | 'vast' | 'nofill'>('idle');
   const [remaining, setRemaining] = useState(0);
   const adContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -34,46 +34,69 @@ export function useRewardedAd() {
       });
   }, []);
 
-  const settle = useCallback((watched: boolean) => {
-    setMode('idle');
+  const resolveOnly = useCallback((watched: boolean) => {
     const resolve = resolverRef.current;
     resolverRef.current = null;
     resolve?.(watched);
   }, []);
 
-  const runCountdown = useCallback((seconds: number) => {
-    setRemaining(seconds);
-    setMode('countdown');
-  }, []);
+  const settle = useCallback(
+    (watched: boolean) => {
+      setMode('idle');
+      resolveOnly(watched);
+    },
+    [resolveOnly],
+  );
+
+  // No ad to show → no reward, but tell the user why (auto-dismiss).
+  const showNoFill = useCallback(() => {
+    setMode('nofill');
+    resolveOnly(false);
+    window.setTimeout(() => setMode('idle'), 2600);
+  }, [resolveOnly]);
+
+  const playVast = useCallback(async () => {
+    let ready = imaReadyRef.current;
+    if (!ready) {
+      try {
+        await loadIma();
+        imaReadyRef.current = true;
+        ready = true;
+      } catch {
+        ready = false;
+      }
+    }
+    if (!ready || !adContainerRef.current || !videoRef.current) {
+      showNoFill();
+      return;
+    }
+    setMode('vast');
+    const outcome = await playVastRewarded(
+      adContainerRef.current,
+      videoRef.current,
+      HILLTOP_VAST_TAG,
+    );
+    if (outcome === 'completed') settle(true);
+    else if (outcome === 'skipped') settle(false);
+    else showNoFill();
+  }, [settle, showNoFill]);
 
   const watchAd = useCallback(
     (seconds = 12): Promise<boolean> => {
       return new Promise<boolean>((resolve) => {
         resolverRef.current = resolve;
-
-        if (
-          vastRewardedEnabled &&
-          imaReadyRef.current &&
-          adContainerRef.current &&
-          videoRef.current
-        ) {
-          setMode('vast');
-          void playVastRewarded(adContainerRef.current, videoRef.current, HILLTOP_VAST_TAG).then(
-            (outcome) => {
-              if (outcome === 'completed') settle(true);
-              else if (outcome === 'skipped') settle(false);
-              else runCountdown(seconds); // no-fill/error → house gate
-            },
-          );
+        if (vastRewardedEnabled) {
+          void playVast();
         } else {
-          runCountdown(seconds);
+          setRemaining(seconds);
+          setMode('countdown');
         }
       });
     },
-    [settle, runCountdown],
+    [playVast],
   );
 
-  // House countdown ticker.
+  // House countdown ticker (dev-only path, when no VAST tag is configured).
   useEffect(() => {
     if (mode !== 'countdown' || remaining <= 0) return;
     const t = window.setTimeout(() => setRemaining((r) => r - 1), 1000);
@@ -83,7 +106,7 @@ export function useRewardedAd() {
   const adNode = (
     <>
       {/* VAST video overlay — kept mounted (invisible) when idle so its refs
-          exist synchronously at click time; shown only while a video plays. */}
+          exist synchronously at click time; visible only while a video plays. */}
       {vastRewardedEnabled && (
         <div
           className={
@@ -112,13 +135,23 @@ export function useRewardedAd() {
           </div>
           {mode === 'vast' && (
             <p className="py-3 text-center text-sm text-white/60">
-              Watch the ad to earn your reward…
+              Watch the full ad to earn your reward…
             </p>
           )}
         </div>
       )}
 
-      {/* House countdown placeholder (fallback / when no VAST tag). */}
+      {/* No ad available → no reward, with a short notice. */}
+      {mode === 'nofill' && (
+        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/90 px-6 text-center">
+          <span className="text-4xl">📭</span>
+          <p className="mt-3 max-w-xs text-sm font-medium text-white/80">
+            No ad available right now. Please try again in a bit — or complete an offer to earn.
+          </p>
+        </div>
+      )}
+
+      {/* House countdown placeholder — only when no VAST tag is configured. */}
       {mode === 'countdown' && (
         <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/90 px-6 text-center">
           <button
@@ -129,7 +162,6 @@ export function useRewardedAd() {
           >
             ✕
           </button>
-
           <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/40">
             Sponsored
           </p>
@@ -137,7 +169,6 @@ export function useRewardedAd() {
             <span className="text-4xl">🎬</span>
             <span className="mt-2 text-sm font-bold text-white/80">Advertisement</span>
           </div>
-
           {remaining > 0 ? (
             <p className="mt-6 text-sm font-medium text-white/60">
               Reward unlocks in <span className="coin-num text-white">{remaining}s</span>…
