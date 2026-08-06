@@ -53,6 +53,12 @@ import { FaqPage } from './features/public/FaqPage';
 import { HowToEarnPage } from './features/public/HowToEarnPage';
 import { FreeGiftCardsPage } from './features/public/FreeGiftCardsPage';
 import { EarnMoneyOnlinePage } from './features/public/EarnMoneyOnlinePage';
+import { FreeAmazonGiftCardPage } from './features/public/FreeAmazonGiftCardPage';
+import { FreeFlipkartGiftCardPage } from './features/public/FreeFlipkartGiftCardPage';
+import { FreeGooglePlayGiftCardPage } from './features/public/FreeGooglePlayGiftCardPage';
+import { ReferAndEarnPage } from './features/public/ReferAndEarnPage';
+import { BlogIndexPage } from './features/blog/BlogIndexPage';
+import { BlogPostPage } from './features/blog/BlogPostPage';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -88,6 +94,12 @@ export function AppRoutes() {
         <Route path="how-to-earn" element={<HowToEarnPage />} />
         <Route path="free-gift-cards" element={<FreeGiftCardsPage />} />
         <Route path="earn-money-online" element={<EarnMoneyOnlinePage />} />
+        <Route path="free-amazon-gift-card" element={<FreeAmazonGiftCardPage />} />
+        <Route path="free-flipkart-gift-card" element={<FreeFlipkartGiftCardPage />} />
+        <Route path="free-google-play-gift-card" element={<FreeGooglePlayGiftCardPage />} />
+        <Route path="refer-and-earn" element={<ReferAndEarnPage />} />
+        <Route path="blog" element={<BlogIndexPage />} />
+        <Route path="blog/:slug" element={<BlogPostPage />} />
         <Route path="faq" element={<FaqPage />} />
       </Route>
 

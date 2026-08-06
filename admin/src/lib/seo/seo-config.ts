@@ -10,6 +10,7 @@
  * en-IN), and GEO (clean factual content + llms.txt + AI-crawler-friendly).
  */
 import { FAQ_ITEMS } from '../../features/landing/faq';
+import { BLOG_POSTS, type BlogPostMeta } from '../../features/blog/posts-meta';
 
 export const SITE_URL = 'https://cashraja.graduatedcoder.in';
 export const SITE_NAME = 'Cash Raja';
@@ -171,6 +172,58 @@ export const PAGE_SEO: Record<string, PageSeo> = {
       },
     ],
   },
+  '/free-amazon-gift-card': {
+    path: '/free-amazon-gift-card',
+    title: 'Free Amazon Gift Card (Amazon Pay) in India — Cash Raja',
+    description:
+      'Earn a free Amazon Pay gift card in India with Cash Raja. Complete offers, surveys and games to earn coins, then redeem for an Amazon gift card. Free to join · 18+.',
+    crumb: 'Free Amazon gift card',
+  },
+  '/free-flipkart-gift-card': {
+    path: '/free-flipkart-gift-card',
+    title: 'Free Flipkart Gift Card in India — Cash Raja',
+    description:
+      'Earn a free Flipkart gift card in India with Cash Raja. Complete simple tasks to earn coins and redeem them for a Flipkart voucher. Free to join, no purchase required · 18+.',
+    crumb: 'Free Flipkart gift card',
+  },
+  '/free-google-play-gift-card': {
+    path: '/free-google-play-gift-card',
+    title: 'Free Google Play Gift Card & Redeem Code in India — Cash Raja',
+    description:
+      'Get a free Google Play gift card and redeem code in India with Cash Raja. Earn coins with offers, surveys and games, then redeem for a Google Play code. Free · 18+.',
+    crumb: 'Free Google Play gift card',
+  },
+  '/refer-and-earn': {
+    path: '/refer-and-earn',
+    title: 'Refer and Earn — Invite Friends, Earn Bonus Coins | Cash Raja',
+    description:
+      'Cash Raja refer and earn: share your referral code, and earn bonus coins when friends join and complete tasks. Redeem coins for gift cards. Free · 18+ · India.',
+    crumb: 'Refer and earn',
+  },
+  '/blog': {
+    path: '/blog',
+    title: 'Cash Raja Blog & Guides — Earn Free Gift Cards in India',
+    description:
+      'Tips and honest guides on earning coins and redeeming free Amazon, Flipkart and Google Play gift cards in India with Cash Raja.',
+    crumb: 'Blog',
+    jsonLd: [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Blog',
+        name: 'Cash Raja Blog',
+        url: `${SITE_URL}/blog`,
+        inLanguage: 'en-IN',
+        publisher: { '@id': ORG_ID },
+        blogPost: BLOG_POSTS.map((p) => ({
+          '@type': 'BlogPosting',
+          headline: p.h1,
+          url: `${SITE_URL}/blog/${p.slug}`,
+          datePublished: p.date,
+          dateModified: p.updated,
+        })),
+      },
+    ],
+  },
   '/about': {
     path: '/about',
     title: 'About Cash Raja — India’s Play-and-Earn Rewards App',
@@ -201,6 +254,37 @@ export const PAGE_SEO: Record<string, PageSeo> = {
     crumb: 'Terms',
   },
 };
+
+/** BlogPosting structured data for a single article. */
+function blogPostingLd(post: BlogPostMeta): Record<string, unknown> {
+  const url = `${SITE_URL}/blog/${post.slug}`;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.h1,
+    description: post.description,
+    datePublished: post.date,
+    dateModified: post.updated,
+    inLanguage: 'en-IN',
+    keywords: post.keywords.join(', '),
+    image: OG_IMAGE,
+    mainEntityOfPage: url,
+    author: { '@id': ORG_ID },
+    publisher: { '@id': ORG_ID },
+    isPartOf: { '@id': SITE_ID },
+  };
+}
+
+// Register each blog post as its own prerendered, schema-rich page.
+for (const post of BLOG_POSTS) {
+  PAGE_SEO[`/blog/${post.slug}`] = {
+    path: `/blog/${post.slug}`,
+    title: post.title,
+    description: post.description,
+    crumb: post.h1,
+    jsonLd: [blogPostingLd(post)],
+  };
+}
 
 /** Public routes to statically prerender. */
 export const PRERENDER_ROUTES = Object.keys(PAGE_SEO);
@@ -235,16 +319,22 @@ function webPageLd(seo: PageSeo, canonical: string): Record<string, unknown> {
   };
 }
 
-/** Home > Page breadcrumb trail (skipped on the home page itself). */
+/** Breadcrumb trail (skipped on the home page). Blog posts get Home > Blog > Post. */
 function breadcrumbLd(seo: PageSeo, canonical: string): Record<string, unknown> | null {
   if (seo.path === '/') return null;
+  const items: Record<string, unknown>[] = [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/` },
+  ];
+  if (seo.path.startsWith('/blog/')) {
+    items.push({ '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog` });
+    items.push({ '@type': 'ListItem', position: 3, name: seo.crumb ?? seo.title, item: canonical });
+  } else {
+    items.push({ '@type': 'ListItem', position: 2, name: seo.crumb ?? seo.title, item: canonical });
+  }
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/` },
-      { '@type': 'ListItem', position: 2, name: seo.crumb ?? seo.title, item: canonical },
-    ],
+    itemListElement: items,
   };
 }
 

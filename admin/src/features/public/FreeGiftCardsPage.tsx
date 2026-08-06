@@ -22,16 +22,25 @@ export function FreeGiftCardsPage() {
         <h2 className="mt-10 text-xl font-bold text-ink">Which gift cards can I get?</h2>
         <ul className="mt-3 space-y-2 text-ink-muted">
           <li>
-            <strong className="text-ink">Amazon Pay gift cards</strong> — spend across Amazon.in on
-            almost anything.
+            <Link to="/free-amazon-gift-card" className="font-semibold text-primary-600 hover:underline">
+              Amazon Pay gift cards
+            </Link>{' '}
+            — spend across Amazon.in on almost anything.
           </li>
           <li>
-            <strong className="text-ink">Flipkart gift cards</strong> — shop electronics, fashion
-            and more on Flipkart.
+            <Link to="/free-flipkart-gift-card" className="font-semibold text-primary-600 hover:underline">
+              Flipkart gift cards
+            </Link>{' '}
+            — shop electronics, fashion and more on Flipkart.
           </li>
           <li>
-            <strong className="text-ink">Google Play gift cards</strong> — apps, games and
-            subscriptions on the Play Store.
+            <Link
+              to="/free-google-play-gift-card"
+              className="font-semibold text-primary-600 hover:underline"
+            >
+              Google Play gift cards
+            </Link>{' '}
+            — apps, games and subscriptions on the Play Store.
           </li>
         </ul>
         <p className="mt-3 text-ink-muted">
