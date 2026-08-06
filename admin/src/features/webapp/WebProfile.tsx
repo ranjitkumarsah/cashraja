@@ -1,13 +1,28 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
+import { Bell } from 'lucide-react';
 import { webApi } from '../webauth/web-api';
 import { webSignOut } from '../webauth/web-auth';
+import { enableWebPush, pushPermission, webPushConfigured } from './webPush';
 
 export function WebProfile() {
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [pushState, setPushState] = useState(pushPermission());
+  const [pushBusy, setPushBusy] = useState(false);
+
+  async function enablePush() {
+    setPushBusy(true);
+    const result = await enableWebPush();
+    setPushState(pushPermission());
+    setPushBusy(false);
+    if (result === 'denied') {
+      // Permission was blocked — the browser won't re-prompt; guide the user.
+      alert('Notifications are blocked. Enable them in your browser site settings.');
+    }
+  }
 
   const me = useQuery({
     queryKey: ['web', 'me'],
@@ -44,6 +59,40 @@ export function WebProfile() {
           </p>
         )}
       </div>
+
+      {webPushConfigured && pushState !== 'unsupported' && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex size-10 items-center justify-center rounded-xl bg-gold-400/15 text-gold-300">
+              <Bell className="size-5" />
+            </span>
+            <div>
+              <p className="text-sm font-bold text-white">Notifications</p>
+              <p className="text-xs text-indigo-200/70">
+                Get alerts for rewards, offers &amp; gift card codes.
+              </p>
+            </div>
+          </div>
+          {pushState === 'granted' ? (
+            <span className="shrink-0 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300">
+              On
+            </span>
+          ) : pushState === 'denied' ? (
+            <span className="shrink-0 rounded-full bg-red-500/15 px-3 py-1 text-xs font-semibold text-red-300">
+              Blocked
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={enablePush}
+              disabled={pushBusy}
+              className="shrink-0 rounded-full bg-gold-400 px-4 py-2 text-sm font-extrabold text-primary-950 hover:bg-gold-300 disabled:opacity-60"
+            >
+              {pushBusy ? '…' : 'Enable'}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-2xl border border-white/10">
         <Link to="/terms" className="block bg-white/[0.02] px-4 py-3 text-sm text-indigo-100 hover:bg-white/5">

@@ -7,6 +7,7 @@ import { isWebAuthed } from '../webauth/web-auth';
 import { webApi } from '../webauth/web-api';
 import { HilltopBanner } from './HilltopBanner';
 import { loadHilltopPopunder } from './hilltopads';
+import { initWebPush } from './webPush';
 
 /** Route guard for the signed-in web app. */
 export function WebRequireAuth() {
@@ -52,6 +53,9 @@ export function WebAppLayout() {
   // clicks incl. earn taps. No-op until the popunder tag is configured.
   useEffect(() => {
     loadHilltopPopunder();
+    // Web push: refresh the FCM token if already permitted + listen for
+    // foreground messages. No-op until VITE_FIREBASE_VAPID_KEY is set.
+    void initWebPush();
   }, []);
 
   return (
