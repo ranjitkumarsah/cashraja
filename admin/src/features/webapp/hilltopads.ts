@@ -1,30 +1,48 @@
 /**
  * HilltopAds integration (web) — replaces Monetag.
  *
- * HilltopAds is a display network (popunder / banner / in-page push / native).
- * We load its ad-spot script ONLY inside the signed-in app (never the public
- * SEO pages, so Google ranking is unaffected). Each HilltopAds ad spot gives you
- * a script snippet with a unique CDN domain — paste that URL here (or set
- * VITE_HILLTOP_SRC at build time). Inert until configured.
+ * Two things from HilltopAds, both signed-in app only (never the public SEO
+ * pages, so Google ranking is unaffected):
  *
- * Because the ad script runs in the app origin, the backend CSP already allows
- * third-party `https:` scripts/creatives (see security-headers.ts).
+ *  1. PASSIVE BANNER — the "MultiTag: Banner 300x250" zone. Its snippet is an
+ *     async script (+ inline invoke) that renders into a container div. Paste
+ *     the script URL as VITE_HILLTOP_BANNER_SRC (and, if the snippet uses a
+ *     data-key/inline config, tell me and I'll add it). Rendered by
+ *     <HilltopBanner>.
+ *
+ *  2. REWARDED VIDEO — the "Video: VAST 3.0" zone. Its VAST tag URL goes in
+ *     VITE_HILLTOP_VAST_TAG and is played via the IMA SDK (see ima-rewarded.ts);
+ *     COMPLETE = reward, SKIP/no-fill = no reward (caller falls back to the
+ *     house gate). This is the only HilltopAds zone that can confirm a full view.
+ *
+ * The ad script runs in the app origin (CSP already allows third-party https:
+ * scripts/media — see backend security-headers.ts).
  */
 const env = import.meta.env as Record<string, string | undefined>;
 
-/** HilltopAds ad-spot script URL, e.g. 'https://<cdn>.com/<spot>.js'. */
-const HILLTOP_SRC = env.VITE_HILLTOP_SRC?.trim() || '';
+/** HilltopAds "MultiTag: Banner 300x250" script URL. */
+const BANNER_SRC = env.VITE_HILLTOP_BANNER_SRC?.trim() || '';
+/** Optional data-key/site id some MultiTag snippets require on the script tag. */
+const BANNER_KEY = env.VITE_HILLTOP_BANNER_KEY?.trim() || '';
 
-export const hilltopEnabled = HILLTOP_SRC.length > 0;
+/** HilltopAds "Video: VAST 3.0" ad tag URL (rewarded). */
+export const HILLTOP_VAST_TAG = env.VITE_HILLTOP_VAST_TAG?.trim() || '';
 
-let loaded = false;
+export const bannerEnabled = BANNER_SRC.length > 0;
+export const vastRewardedEnabled = HILLTOP_VAST_TAG.length > 0;
 
-/** Inject the HilltopAds ad-spot script once. Call from the signed-in app only. */
-export function loadHilltopAds(): void {
-  if (!hilltopEnabled || loaded) return;
-  loaded = true;
+let bannerLoaded = false;
+
+/**
+ * Inject the HilltopAds banner script into the given container once. The 300x250
+ * MultiTag renders itself where the script is placed.
+ */
+export function mountHilltopBanner(container: HTMLElement): void {
+  if (!bannerEnabled || bannerLoaded) return;
+  bannerLoaded = true;
   const script = document.createElement('script');
-  script.src = HILLTOP_SRC;
+  script.src = BANNER_SRC;
   script.async = true;
-  (document.body || document.documentElement).appendChild(script);
+  if (BANNER_KEY) script.dataset.key = BANNER_KEY;
+  container.appendChild(script);
 }

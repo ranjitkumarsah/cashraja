@@ -1,11 +1,10 @@
-import { useEffect } from 'react';
 import { Home, Gift, Wallet, Sparkles, User, Bell } from 'lucide-react';
 import { NavLink, Navigate, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { CoinMark } from '../../components/CoinMark';
 import { isWebAuthed } from '../webauth/web-auth';
 import { webApi } from '../webauth/web-api';
-import { loadHilltopAds } from './hilltopads';
+import { HilltopBanner } from './HilltopBanner';
 
 /** Route guard for the signed-in web app. */
 export function WebRequireAuth() {
@@ -47,11 +46,6 @@ const TABS = [
  * scrollable area between them.
  */
 export function WebAppLayout() {
-  // HilltopAds display — signed-in app only, never public/SEO pages.
-  useEffect(() => {
-    loadHilltopAds();
-  }, []);
-
   return (
     <div className="dark flex min-h-screen flex-col bg-primary-950 text-ink">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-primary-950/95 backdrop-blur">
@@ -68,6 +62,9 @@ export function WebAppLayout() {
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-24 pt-4">
         <Outlet />
+        <div className="mt-6">
+          <HilltopBanner />
+        </div>
       </main>
 
       <nav

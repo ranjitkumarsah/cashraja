@@ -26,6 +26,8 @@ const CONTENT_SECURITY_POLICY = [
   "style-src 'self' 'unsafe-inline' https:",
   "img-src 'self' data: https:",
   "font-src 'self' data: https:",
+  // Video-ad creatives (HilltopAds VAST via the IMA SDK) stream from https/blob.
+  "media-src 'self' https: blob:",
   "connect-src 'self' https:",
   "frame-src 'self' https:",
   "object-src 'none'",
