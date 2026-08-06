@@ -8,6 +8,7 @@ import { webApi } from '../webauth/web-api';
 import { HilltopBanner } from './HilltopBanner';
 import { loadHilltopPopunder } from './hilltopads';
 import { initWebPush } from './webPush';
+import { AdblockNotice } from './AdblockNotice';
 
 /** Route guard for the signed-in web app. */
 export function WebRequireAuth() {
@@ -60,6 +61,7 @@ export function WebAppLayout() {
 
   return (
     <div className="dark flex min-h-screen flex-col bg-primary-950 text-ink">
+      <AdblockNotice />
       <header className="sticky top-0 z-40 border-b border-white/10 bg-primary-950/95 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between px-4">
           <NavLink to="/home" className="flex items-center gap-2.5" aria-label="Cash Raja home">

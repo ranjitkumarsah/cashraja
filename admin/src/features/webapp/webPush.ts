@@ -13,7 +13,10 @@ import { webApi } from '../webauth/web-api';
  * (public, safe to ship). Web push is inert until it's provided.
  */
 const env = import.meta.env as Record<string, string | undefined>;
-const VAPID_KEY = env.VITE_FIREBASE_VAPID_KEY?.trim() || '';
+// Public Web Push certificate key pair (safe to ship). Override via env if needed.
+const VAPID_KEY =
+  env.VITE_FIREBASE_VAPID_KEY?.trim() ||
+  'BGgGMfufPNMUz4Qw4k_vEd2vrCPpzknJ47xOGAPirhgxebkw61Eb0QwOaAfzcFiL96bpjhun99TJakLV3kVgoUY';
 
 export const webPushConfigured = VAPID_KEY.length > 0;
 
