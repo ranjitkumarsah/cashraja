@@ -1,0 +1,15 @@
+{
+  "name": "Cash Raja — Earn Free Gift Cards in India",
+  "short_name": "Cash Raja",
+  "description": "Earn coins by playing games, completing offers and surveys, then redeem for Amazon, Flipkart and Google Play gift cards. For ages 18+ in India.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1e1b4b",
+  "theme_color": "#1e1b4b",
+  "lang": "en-IN",
+  "categories": ["lifestyle", "shopping", "finance"],
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

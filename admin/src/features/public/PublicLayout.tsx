@@ -22,15 +22,22 @@ function BrandMark({ className }: { className?: string }) {
 const NAV_LINKS = [
   { to: '/', label: 'Home' },
   { to: '/how-to-earn', label: 'How to earn' },
-  { to: '/about', label: 'About' },
+  { to: '/free-gift-cards', label: 'Free gift cards' },
   { to: '/faq', label: 'FAQ' },
 ] as const;
 
+/** SEO guide pages, grouped in the footer. */
+const GUIDE_LINKS = [
+  { to: '/how-to-earn', label: 'How to earn' },
+  { to: '/free-gift-cards', label: 'Free gift cards' },
+  { to: '/earn-money-online', label: 'Earn money online' },
+] as const;
+
 const FOOTER_LINKS = [
-  { to: '/privacy', label: 'Privacy Policy' },
-  { to: '/terms', label: 'Terms & Conditions' },
   { to: '/about', label: 'About' },
   { to: '/faq', label: 'FAQ' },
+  { to: '/privacy', label: 'Privacy Policy' },
+  { to: '/terms', label: 'Terms & Conditions' },
 ] as const;
 
 /**
@@ -103,13 +110,28 @@ export function PublicLayout() {
       </main>
 
       <footer className="border-t border-white/10 bg-primary-950 text-indigo-200">
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr]">
+        <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
           <div className="space-y-3">
             <BrandMark />
             <p className="max-w-xs text-sm leading-relaxed text-indigo-300/80">
-              Play games, complete offers, and redeem your coins for real gift cards. For users
-              aged 18 and older.
+              Play games, complete offers, and redeem your coins for real Amazon, Flipkart and
+              Google Play gift cards in India. For users aged 18 and older.
             </p>
+          </div>
+
+          <div className="space-y-3">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-indigo-400">
+              Guides
+            </h2>
+            <ul className="space-y-2 text-sm">
+              {GUIDE_LINKS.map((link) => (
+                <li key={link.to}>
+                  <Link to={link.to} className="transition-colors hover:text-white">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div className="space-y-3">

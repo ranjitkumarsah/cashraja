@@ -51,6 +51,8 @@ import { TermsPage } from './features/public/TermsPage';
 import { AboutPage } from './features/public/AboutPage';
 import { FaqPage } from './features/public/FaqPage';
 import { HowToEarnPage } from './features/public/HowToEarnPage';
+import { FreeGiftCardsPage } from './features/public/FreeGiftCardsPage';
+import { EarnMoneyOnlinePage } from './features/public/EarnMoneyOnlinePage';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -84,6 +86,8 @@ export function AppRoutes() {
         <Route path="terms" element={<TermsPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="how-to-earn" element={<HowToEarnPage />} />
+        <Route path="free-gift-cards" element={<FreeGiftCardsPage />} />
+        <Route path="earn-money-online" element={<EarnMoneyOnlinePage />} />
         <Route path="faq" element={<FaqPage />} />
       </Route>
 

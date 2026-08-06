@@ -1,0 +1,22 @@
+# Cash Raja
+
+> Cash Raja is a free rewards app and website for India where users aged 18 and older earn coins by completing offers, surveys, games and referrals, then redeem the coins for real digital gift cards from Amazon, Flipkart and Google Play. Coins have no cash value and are redeemable only for gift cards shown in the app. Cash Raja is a rewards app, not a job or a guaranteed source of income.
+
+## Key facts
+- Region: India (en-IN). Currency: INR.
+- Eligibility: 18 years and older; one account per person.
+- Cost: free to join and use; no purchase required.
+- Earn by: offers, surveys, games, daily rewards, and referrals. Every reward is verified server-side before it is credited.
+- Redeem for: Amazon Pay, Flipkart, and Google Play gift cards (availability varies), delivered digitally after review.
+- Sign-in: Google.
+- Support: support.cashraja@gmail.com
+
+## Pages
+- [Home](https://cashraja.graduatedcoder.in/): overview of how Cash Raja works.
+- [How to earn](https://cashraja.graduatedcoder.in/how-to-earn): step-by-step guide to earning and redeeming.
+- [Free gift cards](https://cashraja.graduatedcoder.in/free-gift-cards): free Amazon, Flipkart and Google Play gift cards in India.
+- [Earn money online](https://cashraja.graduatedcoder.in/earn-money-online): earning online in India with a rewards app.
+- [FAQ](https://cashraja.graduatedcoder.in/faq): common questions about earning, redeeming, eligibility and payouts.
+- [About](https://cashraja.graduatedcoder.in/about): what Cash Raja is and its principles.
+- [Privacy Policy](https://cashraja.graduatedcoder.in/privacy)
+- [Terms & Conditions](https://cashraja.graduatedcoder.in/terms)
