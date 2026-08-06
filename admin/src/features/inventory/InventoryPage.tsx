@@ -3,11 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { AlertTriangle, Eye } from 'lucide-react';
+import { AlertTriangle, Eye, Pencil, Trash2 } from 'lucide-react';
 import {
+  deleteInventory,
   getStockLevels,
   listInventory,
   revealCode,
+  updateInventory,
   uploadInventory,
 } from '../../lib/api/inventory';
 import type { InventoryItemView } from '../../lib/api/types';
@@ -217,10 +219,15 @@ const STATUS_OPTIONS = [
 
 function InventoryList() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [brand, setBrand] = useState('');
   const [status, setStatus] = useState('');
   const [confirmItem, setConfirmItem] = useState<InventoryItemView | null>(null);
   const [revealed, setRevealed] = useState<string | null>(null);
+  const [editItem, setEditItem] = useState<InventoryItemView | null>(null);
+  const [editDenom, setEditDenom] = useState('');
+  const [editCode, setEditCode] = useState('');
+  const [deleteItem, setDeleteItem] = useState<InventoryItemView | null>(null);
 
   const params = { brand: brand || undefined, status: status || undefined };
   const list = useQuery({
@@ -230,6 +237,10 @@ function InventoryList() {
     // refetch on mount so the list can't show a stale status.
     refetchOnMount: 'always',
   });
+
+  function refresh() {
+    queryClient.invalidateQueries({ queryKey: ['inventory'] });
+  }
 
   const revealMutation = useMutation({
     mutationFn: (id: string) => revealCode(id),
@@ -245,6 +256,60 @@ function InventoryList() {
       });
     },
   });
+
+  function openEdit(item: InventoryItemView) {
+    setEditItem(item);
+    setEditDenom(String(item.denomination));
+    setEditCode('');
+  }
+
+  const updateMutation = useMutation({
+    mutationFn: (vars: { id: string; denomination?: number; code?: string }) =>
+      updateInventory(vars.id, { denomination: vars.denomination, code: vars.code }),
+    onSuccess: () => {
+      toast({ variant: 'success', title: 'Code updated' });
+      setEditItem(null);
+      refresh();
+    },
+    onError: (error) => {
+      toast({
+        variant: 'error',
+        title: 'Update failed',
+        description: apiErrorMessage(error, 'Could not update this code.'),
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteInventory(id),
+    onSuccess: () => {
+      toast({ variant: 'success', title: 'Code deleted' });
+      setDeleteItem(null);
+      refresh();
+    },
+    onError: (error) => {
+      toast({
+        variant: 'error',
+        title: 'Delete failed',
+        description: apiErrorMessage(error, 'Could not delete this code.'),
+      });
+    },
+  });
+
+  function submitEdit() {
+    if (!editItem) return;
+    const denomination = Number(editDenom);
+    if (!Number.isInteger(denomination) || denomination <= 0) {
+      toast({ variant: 'error', title: 'Enter a valid denomination' });
+      return;
+    }
+    const code = editCode.trim();
+    updateMutation.mutate({
+      id: editItem.id,
+      denomination,
+      code: code.length > 0 ? code : undefined,
+    });
+  }
 
   return (
     <Card>
@@ -298,10 +363,24 @@ function InventoryList() {
                     <StatusBadge status={item.status} />
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button size="sm" variant="outline" onClick={() => setConfirmItem(item)}>
-                      <Eye className="size-4" />
-                      Reveal
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setConfirmItem(item)}>
+                        <Eye className="size-4" />
+                        Reveal
+                      </Button>
+                      {item.status === 'unused' && (
+                        <>
+                          <Button size="sm" variant="outline" onClick={() => openEdit(item)}>
+                            <Pencil className="size-4" />
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="danger" onClick={() => setDeleteItem(item)}>
+                            <Trash2 className="size-4" />
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -348,6 +427,66 @@ function InventoryList() {
         <p className="mb-2 text-sm text-ink-muted">This reveal has been logged.</p>
         <p className="coin-num select-all rounded-lg border border-edge bg-surface-muted p-3 text-center text-lg font-bold text-ink">
           {revealed}
+        </p>
+      </Modal>
+
+      <Modal
+        open={editItem !== null}
+        onClose={() => setEditItem(null)}
+        title="Edit code"
+        footer={
+          <>
+            <Button variant="outline" type="button" onClick={() => setEditItem(null)}>
+              Cancel
+            </Button>
+            <Button variant="primary" loading={updateMutation.isPending} onClick={submitEdit}>
+              Save changes
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-ink-muted">
+            Editing {editItem?.brand} · only unused codes can be changed.
+          </p>
+          <Input
+            label="Denomination (₹)"
+            type="number"
+            min={1}
+            value={editDenom}
+            onChange={(e) => setEditDenom(e.target.value)}
+          />
+          <Input
+            label="New code"
+            placeholder="Leave blank to keep the current code"
+            value={editCode}
+            onChange={(e) => setEditCode(e.target.value)}
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        open={deleteItem !== null}
+        onClose={() => setDeleteItem(null)}
+        title="Delete code"
+        footer={
+          <>
+            <Button variant="outline" type="button" onClick={() => setDeleteItem(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              loading={deleteMutation.isPending}
+              onClick={() => deleteItem && deleteMutation.mutate(deleteItem.id)}
+            >
+              Delete code
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-ink-muted">
+          Permanently delete this unused {deleteItem?.brand} ₹
+          {deleteItem ? formatNumber(deleteItem.denomination) : ''} code? This can't be undone.
         </p>
       </Modal>
     </Card>

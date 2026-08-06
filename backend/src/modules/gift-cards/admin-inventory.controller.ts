@@ -2,8 +2,10 @@ import { ApiTags } from '@nestjs/swagger';
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UnauthorizedException,
@@ -18,6 +20,7 @@ import {
   RolesGuard,
 } from '../../common/auth';
 import { InventoryQueryDto } from './dto/inventory-query.dto';
+import { InventoryUpdateDto } from './dto/inventory-update.dto';
 import { InventoryUploadDto } from './dto/inventory-upload.dto';
 import {
   InventoryItemView,
@@ -66,6 +69,26 @@ export class AdminInventoryController {
     @Param('id') id: string,
   ): Promise<{ code: string; status: string }> {
     return this.inventory.reveal(requireAdmin(admin).id, id);
+  }
+
+  @Patch(':id')
+  update(
+    @CurrentAdmin() admin: AuthenticatedAdmin | undefined,
+    @Param('id') id: string,
+    @Body() dto: InventoryUpdateDto,
+  ): Promise<InventoryItemView> {
+    return this.inventory.updateUnused(requireAdmin(admin).id, id, {
+      denomination: dto.denomination,
+      code: dto.code,
+    });
+  }
+
+  @Delete(':id')
+  remove(
+    @CurrentAdmin() admin: AuthenticatedAdmin | undefined,
+    @Param('id') id: string,
+  ): Promise<{ deleted: true }> {
+    return this.inventory.deleteUnused(requireAdmin(admin).id, id);
   }
 }
 

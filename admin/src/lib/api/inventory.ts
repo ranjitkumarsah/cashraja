@@ -44,3 +44,25 @@ export async function revealCode(id: string): Promise<RevealResult> {
   const { data } = await api.get<RevealResult>(`/admin/inventory/${id}/reveal`);
   return data;
 }
+
+export interface InventoryUpdateBody {
+  /** New ₹ value. Omit to keep. */
+  denomination?: number;
+  /** New plaintext code. Omit to keep. */
+  code?: string;
+}
+
+/** PATCH /api/admin/inventory/:id (super_admin) — edit an unused code's value/code. */
+export async function updateInventory(
+  id: string,
+  body: InventoryUpdateBody,
+): Promise<InventoryItemView> {
+  const { data } = await api.patch<InventoryItemView>(`/admin/inventory/${id}`, body);
+  return data;
+}
+
+/** DELETE /api/admin/inventory/:id (super_admin) — delete an unused code. */
+export async function deleteInventory(id: string): Promise<{ deleted: true }> {
+  const { data } = await api.delete<{ deleted: true }>(`/admin/inventory/${id}`);
+  return data;
+}

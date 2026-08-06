@@ -1,4 +1,11 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { GiftCardBrand, InventoryStatus, Prisma } from '@prisma/client';
 import { ALERT_SERVICE, AlertService } from '../../common/alerts/alert.service';
 import {
@@ -217,6 +224,123 @@ export class InventoryService {
       // Never log the plaintext; the audit row records only that a reveal happened.
       this.logger.warn(`Inventory code revealed: item=${inventoryId} by admin=${adminId}`);
       return { code: plaintext, status: item.status };
+    });
+  }
+
+  /**
+   * Delete a single UNUSED inventory code (C1.x admin cleanup). Reserved/issued
+   * codes are money-critical and can never be deleted. Audited.
+   */
+  async deleteUnused(adminId: string, inventoryId: string): Promise<{ deleted: true }> {
+    return this.prisma.$transaction(async (tx) => {
+      const item = await tx.giftCardInventory.findUnique({ where: { id: inventoryId } });
+      if (!item) {
+        throw new NotFoundException('Inventory item not found');
+      }
+      if (item.status !== InventoryStatus.unused) {
+        throw new BadRequestException('Only unused codes can be deleted');
+      }
+      await tx.giftCardInventory.delete({ where: { id: inventoryId } });
+      await writeAuditLog(tx, {
+        adminId,
+        action: AUDIT_ACTIONS.INVENTORY_DELETED,
+        targetType: 'gift_card_inventory',
+        targetId: inventoryId,
+        reason: `deleted unused ${item.brand} ₹${item.denomination}`,
+      });
+      return { deleted: true } as const;
+    });
+  }
+
+  /**
+   * Edit an UNUSED code's denomination (value) and/or the code string. Reserved/
+   * issued codes are immutable. Changing the code re-encrypts + re-fingerprints;
+   * changing the denomination auto-creates the catalog row for the new
+   * (brand, denomination) if needed (mirrors upload). Audited.
+   */
+  async updateUnused(
+    adminId: string,
+    inventoryId: string,
+    patch: { denomination?: number; code?: string },
+  ): Promise<InventoryItemView> {
+    return this.prisma.$transaction(async (tx) => {
+      const item = await tx.giftCardInventory.findUnique({ where: { id: inventoryId } });
+      if (!item) {
+        throw new NotFoundException('Inventory item not found');
+      }
+      if (item.status !== InventoryStatus.unused) {
+        throw new BadRequestException('Only unused codes can be edited');
+      }
+
+      const newDenomination = patch.denomination ?? item.denomination;
+      const newCode = patch.code?.trim();
+      if (newDenomination <= 0) {
+        throw new BadRequestException('Denomination must be greater than zero');
+      }
+      if (patch.code !== undefined && (!newCode || newCode.length < 3)) {
+        throw new BadRequestException('Code is too short');
+      }
+
+      // Ensure a catalog row exists for the (brand, new denomination) so the
+      // denomination stays offerable (same rule as upload()).
+      if (newDenomination !== item.denomination) {
+        const existingCard = await tx.giftCard.findUnique({
+          where: { brand_denomination: { brand: item.brand, denomination: newDenomination } },
+        });
+        if (!existingCard) {
+          const created = await tx.giftCard.create({
+            data: {
+              brand: item.brand,
+              denomination: newDenomination,
+              coinCost: newDenomination * GIFTCARD_COINS_PER_RUPEE_CONFIG.fallback,
+              isActive: true,
+            },
+          });
+          await writeAuditLog(tx, {
+            adminId,
+            action: AUDIT_ACTIONS.GIFT_CARD_CREATED,
+            targetType: 'gift_card',
+            targetId: created.id,
+            reason: `auto-created via inventory edit: ${item.brand} ₹${newDenomination}`,
+          });
+        }
+      }
+
+      const data: Prisma.GiftCardInventoryUpdateInput = { denomination: newDenomination };
+      if (newCode) {
+        data.codeEncrypted = this.crypto.encrypt(newCode);
+        data.codeFingerprint = this.crypto.fingerprint(newCode);
+      }
+
+      let updated;
+      try {
+        updated = await tx.giftCardInventory.update({ where: { id: inventoryId }, data });
+      } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          throw new ConflictException('That code already exists for this brand and denomination');
+        }
+        throw err;
+      }
+
+      await writeAuditLog(tx, {
+        adminId,
+        action: AUDIT_ACTIONS.INVENTORY_UPDATED,
+        targetType: 'gift_card_inventory',
+        targetId: inventoryId,
+        reason:
+          `edited ${item.brand}: ₹${item.denomination}→₹${newDenomination}` +
+          (newCode ? ', code replaced' : ''),
+      });
+
+      return {
+        id: updated.id,
+        brand: updated.brand,
+        denomination: updated.denomination,
+        status: updated.status,
+        code_masked: '****',
+        redemption_id: updated.redemptionId,
+        created_at: updated.createdAt.toISOString(),
+      };
     });
   }
 

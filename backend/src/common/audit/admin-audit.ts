@@ -31,6 +31,8 @@ export const AUDIT_ACTIONS = {
   GIFT_CARD_UPDATED: 'gift_card_updated',
   INVENTORY_UPLOADED: 'inventory_uploaded',
   INVENTORY_CODE_REVEALED: 'inventory_code_revealed',
+  INVENTORY_DELETED: 'inventory_deleted',
+  INVENTORY_UPDATED: 'inventory_updated',
   OFFER_UPDATED: 'offer_updated',
   CONFIG_UPDATED: 'config_updated',
   ADMIN_CREATED: 'admin_created',
