@@ -36,20 +36,41 @@ function setCanonical(href: string): void {
   link.setAttribute('href', href);
 }
 
+/** Signed-in app + admin route prefixes — these must never be indexed. */
+const NOINDEX_PREFIXES = [
+  '/admin',
+  '/home',
+  '/earn',
+  '/wallet',
+  '/rewards',
+  '/inbox',
+  '/profile',
+  '/login',
+];
+
 export function SeoManager(): null {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const seo = PAGE_SEO[pathname];
-    if (seo) {
+    // Normalise a trailing slash (/how-to-earn/ → /how-to-earn) so the PAGE_SEO
+    // lookup matches — otherwise a slash path fell through and got noindexed.
+    const path = pathname !== '/' ? pathname.replace(/\/+$/, '') : '/';
+    const isApp = NOINDEX_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
+    const seo = PAGE_SEO[path];
+
+    if (isApp) {
+      // Signed-in app + admin: never index.
+      document.title = path.startsWith('/admin') ? `${SITE_NAME} · Admin` : SITE_NAME;
+      setNamed('robots', 'noindex, nofollow');
+    } else if (seo) {
       document.title = seo.title;
       setNamed('description', seo.description);
       setNamed('robots', 'index, follow');
-      setCanonical(SITE_URL + (pathname === '/' ? '/' : pathname));
+      setCanonical(SITE_URL + (path === '/' ? '/' : path));
     } else {
-      // App + admin: never index.
-      document.title = pathname.startsWith('/admin') ? `${SITE_NAME} · Admin` : SITE_NAME;
-      setNamed('robots', 'noindex, nofollow');
+      // Any other public path — keep it indexable; never accidentally noindex a
+      // marketing page (e.g. a new route not yet in PAGE_SEO on this bundle).
+      setNamed('robots', 'index, follow');
     }
   }, [pathname]);
 

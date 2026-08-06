@@ -56,7 +56,11 @@ async function bootstrap(): Promise<void> {
   // just works and no browser CORS is involved. Absent in dev (Vite serves it).
   const clientDir = join(__dirname, '..', 'client');
   if (existsSync(clientDir)) {
-    app.useStaticAssets(clientDir);
+    // redirect:false — do NOT 301 a directory path like /how-to-earn to
+    // /how-to-earn/. The canonical URL is the no-slash form; the SPA fallback
+    // below serves the prerendered file for it at 200 (a redirect to the slash
+    // form made the SPA see a trailing-slash path and wrongly noindex it).
+    app.useStaticAssets(clientDir, { redirect: false });
     const indexHtml = join(clientDir, 'index.html');
     // SPA fallback: a GET for a non-API, extension-less path (a client-side
     // route like /, /privacy, /admin/dashboard) returns index.html so deep
