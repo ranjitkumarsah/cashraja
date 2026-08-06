@@ -1,37 +1,13 @@
 # Cash Raja — https://cashraja.graduatedcoder.in
-# Public marketing pages are open to all crawlers; app + API are private.
+# Public marketing pages are open to ALL crawlers, including AI / answer engines
+# (GPTBot, PerplexityBot, ClaudeBot, Google-Extended, etc. — they inherit this
+# group). The signed-in app routes are kept out of the index via a noindex meta
+# tag, not robots.txt, so they can still be rendered without being indexed.
+# Only the admin console and the JSON API are disallowed here.
 
 User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /api/
-Disallow: /home
-Disallow: /earn
-Disallow: /wallet
-Disallow: /rewards
-Disallow: /inbox
-Disallow: /profile
-
-# AI / answer-engine crawlers are welcome to read + cite the public pages (GEO).
-User-agent: GPTBot
-Allow: /
-User-agent: OAI-SearchBot
-Allow: /
-User-agent: ChatGPT-User
-Allow: /
-User-agent: PerplexityBot
-Allow: /
-User-agent: ClaudeBot
-Allow: /
-User-agent: Claude-Web
-Allow: /
-User-agent: Google-Extended
-Allow: /
-User-agent: Applebot-Extended
-Allow: /
-User-agent: Amazonbot
-Allow: /
-User-agent: CCBot
-Allow: /
 
 Sitemap: https://cashraja.graduatedcoder.in/sitemap.xml
