@@ -26,12 +26,17 @@ const BANNER_SRC =
   env.VITE_HILLTOP_BANNER_SRC?.trim() ||
   'https://unfoldedtrade.com/b.XaV/s/drGrlY0PYPW/cV/TeNmh9WuWZRUWlxktPxTKcLy/OiTqQGyYOeThcZtrNkzzIH5/NEDfM/wuMpQJ';
 
-/** "Popunder" loader script src — paste your HilltopAds Popunder zone tag. */
-const POPUNDER_SRC = env.VITE_HILLTOP_POPUNDER_SRC?.trim() || '';
+/**
+ * Anti-adblock popunder. HilltopAds' anti-adblock tag is a large INLINE script,
+ * so it's hosted same-origin (admin/public/aa-pop.js) and executed inline at
+ * runtime — no blockable ad-domain URL is ever fetched for the loader itself.
+ */
+const POPUNDER_SRC = env.VITE_HILLTOP_POPUNDER_SRC?.trim() || '/aa-pop.js';
 
 export const bannerEnabled =
   BANNER_SRC.length > 0 && (env.VITE_HILLTOP_BANNER?.trim() || '1') !== '0';
-export const popunderEnabled = POPUNDER_SRC.length > 0;
+export const popunderEnabled =
+  POPUNDER_SRC.length > 0 && (env.VITE_HILLTOP_POPUNDER?.trim() || '1') !== '0';
 
 /** Build a HilltopAds MultiTag banner <script> (settings{} + relaxed referrer). */
 function bannerScript(): HTMLScriptElement {
@@ -61,12 +66,23 @@ export function mountHilltopInterstitial(container: HTMLElement): void {
 
 let popunderLoaded = false;
 
-/** Load the HilltopAds popunder once (signed-in app). Fires on user clicks. */
+/**
+ * Load the HilltopAds anti-adblock popunder once (signed-in app only). Fetches
+ * the same-origin script and runs it INLINE (how the anti-adblock tag is meant
+ * to run). Fires on user clicks, incl. earn taps. Frequency is capped by the
+ * script itself.
+ */
 export function loadHilltopPopunder(): void {
   if (!popunderEnabled || popunderLoaded) return;
   popunderLoaded = true;
-  const script = document.createElement('script');
-  script.src = POPUNDER_SRC;
-  script.async = true;
-  (document.body || document.documentElement).appendChild(script);
+  fetch(POPUNDER_SRC)
+    .then((r) => (r.ok ? r.text() : Promise.reject(new Error('popunder fetch failed'))))
+    .then((code) => {
+      const script = document.createElement('script');
+      script.text = code;
+      (document.body || document.documentElement).appendChild(script);
+    })
+    .catch(() => {
+      popunderLoaded = false;
+    });
 }
