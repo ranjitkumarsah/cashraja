@@ -60,6 +60,19 @@ export const BLOG_POSTS: readonly BlogPostMeta[] = [
     readingMinutes: 4,
     keywords: ['earn coins fast', 'best offers cash raja', 'refer and earn'],
   },
+  {
+    slug: 'how-to-redeem-coins-for-gift-cards',
+    title: 'How to Redeem Coins for Gift Cards in India — Cash Raja',
+    h1: 'How to Redeem Coins for Gift Cards on Cash Raja',
+    description:
+      'A simple guide to redeeming your Cash Raja coins for Amazon, Flipkart and Google Play gift cards in India — how it works, review times, and how your code is delivered.',
+    excerpt:
+      'Turn coins into real gift cards — from picking a brand to getting your code, and how long it takes.',
+    date: '2026-08-06',
+    updated: '2026-08-06',
+    readingMinutes: 4,
+    keywords: ['how to redeem coins for gift cards', 'redeem gift cards india', 'cash raja rewards'],
+  },
 ];
 
 export function blogPostBySlug(slug: string): BlogPostMeta | null {

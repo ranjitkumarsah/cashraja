@@ -150,4 +150,67 @@ export const POST_BODIES: Record<string, ReactNode> = {
       </Section>
     </>
   ),
+
+  'how-to-redeem-coins-for-gift-cards': (
+    <>
+      <p className="text-ink-muted">
+        Earning coins is only half the fun — the best part is turning them into a real gift card.
+        On Cash Raja, redeeming is quick and happens entirely in the app. Here&apos;s exactly how it
+        works, how long it takes, and what to expect.
+      </p>
+
+      <Section title="First, earn enough coins">
+        <p>
+          Every gift card denomination has a coin cost, shown live in the Rewards store. Build your
+          balance by completing offers, answering surveys, playing games, claiming daily rewards, and
+          inviting friends. If you&apos;re just getting started, our{' '}
+          <InternalLink to="/how-to-earn">how to earn guide</InternalLink> walks through each method.
+        </p>
+      </Section>
+
+      <Section title="Step by step: redeeming your coins">
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>Open the <strong className="text-ink">Rewards</strong> store in the app.</li>
+          <li>Choose a brand — Amazon Pay, Flipkart or Google Play.</li>
+          <li>Pick a denomination you can afford with your current coin balance.</li>
+          <li>Confirm the redemption — your coins are reserved straight away.</li>
+          <li>After a quick review, your gift-card code is delivered digitally in the app.</li>
+        </ol>
+      </Section>
+
+      <Section title="How long does it take?">
+        <p>
+          Most redemptions are reviewed and fulfilled quickly, but review times can vary depending on
+          demand and stock. You can always track the status of any redemption from within the app, so
+          you&apos;ll know exactly where it stands. The review step is there to protect against fraud
+          and keep rewards fair for genuine users.
+        </p>
+      </Section>
+
+      <Section title="Which gift card should you pick?">
+        <p>
+          Choose the brand you&apos;ll actually use:{' '}
+          <InternalLink to="/free-amazon-gift-card">Amazon Pay</InternalLink> for almost anything on
+          Amazon.in, <InternalLink to="/free-flipkart-gift-card">Flipkart</InternalLink> for
+          electronics and fashion, or{' '}
+          <InternalLink to="/free-google-play-gift-card">Google Play</InternalLink> for apps, games
+          and subscriptions. See every option on the{' '}
+          <InternalLink to="/free-gift-cards">free gift cards</InternalLink> page.
+        </p>
+      </Section>
+
+      <Section title="A few things to remember">
+        <ul className="list-disc space-y-2 pl-5">
+          <li>Coins have no cash value and can only be redeemed for the gift cards shown in the app.</li>
+          <li>Denominations and availability change over time — grab one when it&apos;s in stock.</li>
+          <li>Cash Raja is for users aged 18 and older, and is a rewards app — not a job or guaranteed income.</li>
+        </ul>
+        <p>
+          That&apos;s it. Once your code arrives, redeem it in your chosen brand&apos;s account and
+          enjoy. Have a question about redemptions? Check the{' '}
+          <InternalLink to="/faq">FAQ</InternalLink>.
+        </p>
+      </Section>
+    </>
+  ),
 };
