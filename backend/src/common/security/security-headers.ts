@@ -13,13 +13,12 @@ import type { NextFunction, Request, Response } from 'express';
  *
  * `x-powered-by` is stripped separately in main.ts via the Express instance.
  *
- * NOTE on the ad-network allowances: the web app runs the Monetag Vignette
- * banner directly in the page (the account has no rewarded/iframe-friendly
- * format). Monetag's SDK + creatives load and eval scripts from many rotating
- * https domains, so `script-src`/`connect-src`/`frame-src` allow `https:`
- * (plus `unsafe-eval`). This is a deliberate, owner-approved trade-off for
- * ad revenue; `img-src` already allowed `https:`. Firebase/GA/Playtime hosts
- * are covered by the same `https:` allowance.
+ * NOTE on the ad-network allowances: the signed-in web app runs a third-party
+ * display ad network (HilltopAds) directly in the page. Its script + creatives
+ * load and eval from many rotating https domains, so `script-src`/`connect-src`/
+ * `frame-src` allow `https:` (plus `unsafe-eval`). This is a deliberate,
+ * owner-approved trade-off for ad revenue; `img-src` already allowed `https:`.
+ * Firebase/GA/Playtime hosts are covered by the same `https:` allowance.
  */
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",

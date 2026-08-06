@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { CoinMark } from '../../components/CoinMark';
 import { isWebAuthed } from '../webauth/web-auth';
 import { webApi } from '../webauth/web-api';
-import { loadMonetagBanner } from './monetag';
+import { loadHilltopAds } from './hilltopads';
 
 /** Route guard for the signed-in web app. */
 export function WebRequireAuth() {
@@ -47,9 +47,9 @@ const TABS = [
  * scrollable area between them.
  */
 export function WebAppLayout() {
-  // Passive Monetag Vignette banner — signed-in app only, never public/SEO pages.
+  // HilltopAds display — signed-in app only, never public/SEO pages.
   useEffect(() => {
-    loadMonetagBanner();
+    loadHilltopAds();
   }, []);
 
   return (
