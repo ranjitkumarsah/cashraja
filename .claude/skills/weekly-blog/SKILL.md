@@ -1,12 +1,13 @@
 ---
 name: weekly-blog
-description: Write and publish ONE new SEO blog post for the Cash Raja marketing site. Adds a post to the blog data files (which auto-register into prerender + sitemap), verifies the build, then commits and pushes to main. Use for the weekly blog cadence or whenever asked to write/publish a Cash Raja blog article.
+description: Write ONE new SEO blog post for the Cash Raja marketing site. Adds the post to the blog data files (which auto-register into prerender + sitemap) and verifies the build. Does NOT commit or push — the owner reviews and pushes to GitHub manually. Use for the weekly blog cadence or whenever asked to write a Cash Raja blog article.
 ---
 
 # Weekly blog writer (Cash Raja)
 
-Publish exactly ONE new, honest, SEO-focused blog article each run, matching the
-existing house style, then build + commit + push. Keep it truthful: Cash Raja is
+Write exactly ONE new, honest, SEO-focused blog article each run, matching the
+existing house style, and verify the build. Do NOT commit or push — leave the
+changes for the owner to review and push manually. Keep it truthful: Cash Raja is
 a rewards app for India (18+), rewards are verified server-side, coins redeem
 only for Amazon/Flipkart/Google Play gift cards, coins have no cash value, and it
 is NOT a job or guaranteed income. Never invent stats, ratings, testimonials, or
@@ -41,18 +42,21 @@ payout guarantees.
    - End with an honest expectation-setting paragraph.
    - Escape apostrophes in JSX text as `&apos;` and quotes as `&ldquo;/&rdquo;`.
 5. **Verify.** From `admin/`, run `npm run build`. Confirm TypeScript passes and
-   the log shows `prerendered /blog/<slug> -> …`. Fix any error before committing.
-6. **Commit + push.** Stage the two changed files and:
-   `git commit -m "Blog: <title>"` then `git push origin main`.
-   End the commit message with the Co-Authored-By trailer per repo convention.
-7. **Report** the published URL: `https://cashraja.graduatedcoder.in/blog/<slug>`
-   and note that Render will deploy it. Remind the owner they can Request
-   Indexing for the new URL in Search Console.
+   the log shows `prerendered /blog/<slug> -> …`. Fix any error before finishing.
+6. **Do NOT commit or push.** Leave the two edited files in the working tree for
+   the owner to review. (The owner commits and pushes to GitHub manually.)
+7. **Report** for the owner:
+   - the new slug + title, and the two files changed,
+   - the local URL to preview: `/blog/<slug>` (and the live URL once pushed:
+     `https://cashraja.graduatedcoder.in/blog/<slug>`),
+   - a ready-to-use commit line, e.g. `git add -A && git commit -m "Blog: <title>"`,
+   - a reminder to Request Indexing for the new URL in Search Console after push.
 
 ## Guardrails
-- Publish only ONE post per run.
+- Write only ONE post per run.
 - Do not modify routing, seo-config, sitemap, or any app/admin/backend files.
-- If the build fails, do NOT push — fix or abort and report.
+- NEVER run `git commit` or `git push` — the owner handles publishing.
+- If the build fails, fix it or report the error; do not leave a broken build.
 - Keep every claim honest and policy-safe (no fabricated ratings/earnings).
 
 ## Backlog (pick the first unpublished slug)
