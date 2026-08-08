@@ -3,10 +3,20 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { FAQ_ITEMS } from './faq';
 
+interface FaqAccordionProps {
+  /**
+   * Heading level for each question. The landing page nests the accordion
+   * under an <h2> section heading, so questions are <h3> there; the standalone
+   * /faq page puts them directly under its <h1>, where <h3> would skip a level.
+   */
+  headingLevel?: 'h2' | 'h3';
+}
+
 /** Accessible accordion of FAQ Q&As, shared by the landing FAQ section and the
  *  standalone `/faq` page. */
-export function FaqAccordion() {
+export function FaqAccordion({ headingLevel = 'h3' }: FaqAccordionProps = {}) {
   const [open, setOpen] = useState<number | null>(0);
+  const Heading = headingLevel;
 
   return (
     <div className="space-y-3">
@@ -17,7 +27,7 @@ export function FaqAccordion() {
             key={item.q}
             className="overflow-hidden rounded-xl border border-edge bg-surface-raised"
           >
-            <h3>
+            <Heading>
               <button
                 type="button"
                 aria-expanded={isOpen}
@@ -33,7 +43,7 @@ export function FaqAccordion() {
                   )}
                 />
               </button>
-            </h3>
+            </Heading>
             {isOpen && (
               <p className="px-5 pb-5 text-sm leading-relaxed text-ink-muted">{item.a}</p>
             )}

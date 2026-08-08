@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { lazy, Suspense, useState, type ReactNode } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { SeoManager } from './lib/seo/SeoManager';
 import { AppShell } from './components/layout/AppShell';
 import { RedirectIfAuthed, RequireAuth, RequireRole } from './components/guards';
@@ -59,6 +59,7 @@ import { FreeGooglePlayGiftCardPage } from './features/public/FreeGooglePlayGift
 import { ReferAndEarnPage } from './features/public/ReferAndEarnPage';
 import { BlogIndexPage } from './features/blog/BlogIndexPage';
 import { BlogPostPage } from './features/blog/BlogPostPage';
+import { NotFoundPage } from './features/public/NotFoundPage';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -144,7 +145,12 @@ export function AppRoutes() {
         </Route>
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Unmatched URL. Renders a real 404 page inside the public layout rather
+          than redirecting to `/` — the server returns HTTP 404 for these paths
+          (backend/src/main.ts), and redirecting home contradicted that status. */}
+      <Route element={<PublicLayout />}>
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
     </Routes>
   );
 }

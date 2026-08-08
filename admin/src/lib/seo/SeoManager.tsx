@@ -68,9 +68,16 @@ export function SeoManager(): null {
       setNamed('robots', 'index, follow');
       setCanonical(SITE_URL + (path === '/' ? '/' : path));
     } else {
-      // Any other public path — keep it indexable; never accidentally noindex a
-      // marketing page (e.g. a new route not yet in PAGE_SEO on this bundle).
-      setNamed('robots', 'index, follow');
+      // No PAGE_SEO entry and not an app route — this path matches nothing, so
+      // the router renders NotFoundPage and the server already answered 404
+      // (backend/src/main.ts). Keep the client in step: leaving it
+      // `index, follow` here would overwrite the server's noindex as soon as a
+      // rendering crawler executed this effect.
+      //
+      // Safe because PAGE_SEO is the single source of truth for public pages —
+      // PRERENDER_ROUTES is derived from its keys, and blog posts register
+      // themselves into it — so a real marketing page can never land here.
+      setNamed('robots', 'noindex, nofollow');
     }
   }, [pathname]);
 

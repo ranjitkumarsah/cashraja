@@ -14,13 +14,27 @@ import {
 import { Link } from 'react-router-dom';
 import { CoinMark } from '../../components/CoinMark';
 import { FaqAccordion } from './FaqAccordion';
-import { useLandingStats } from './stats';
 
 interface Feature {
   icon: LucideIcon;
   title: string;
   body: string;
 }
+
+/** Trust signals shown under the hero.
+ *
+ *  Deliberately scale-independent: these are facts about how Cash Raja works,
+ *  not usage counts. They replaced a live "total players / daily active users /
+ *  rewards paid" strip, which on a new site advertised how few people had
+ *  signed up — the opposite of reassurance in a category where the first
+ *  question is always "is this a scam?". Every line here must stay literally
+ *  true; never restate them as numbers.
+ */
+const TRUST_SIGNALS: readonly string[] = [
+  'Rewards verified server-side before crediting',
+  'Amazon, Flipkart & Google Play gift cards',
+  '18+, one account per person, free to join',
+];
 
 const FEATURES: Feature[] = [
   {
@@ -98,8 +112,6 @@ function GetStartedCta({ className }: { className?: string }) {
 }
 
 export function LandingPage() {
-  const stats = useLandingStats();
-
   return (
     // Force the dark, premium palette for the whole landing regardless of the
     // stored theme — the `dark` class flips the semantic surface/ink tokens.
@@ -120,8 +132,16 @@ export function LandingPage() {
           <span className="mt-6 inline-flex items-center gap-1.5 rounded-full border border-gold-400/30 bg-gold-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-gold-300">
             <Sparkles className="size-3.5" aria-hidden="true" /> For ages 18 and older
           </span>
+          {/* The h1 carries the descriptive phrase, not just the brand name:
+              nobody searches "Cash Raja" before they have heard of it, and this
+              is the strongest heading on the site. The wordmark keeps its visual
+              weight; the qualifying line is part of the same heading so the
+              keywords are in the h1 rather than in a sibling paragraph. */}
           <h1 className="mt-6 text-5xl font-extrabold tracking-tight text-white sm:text-6xl">
             Cash <span className="text-gold-300">Raja</span>
+            <span className="mt-3 block text-xl font-bold text-indigo-100 sm:text-2xl">
+              Play games and earn free gift cards in India
+            </span>
           </h1>
           <p className="mt-5 max-w-2xl text-xl font-medium text-indigo-100 sm:text-2xl">
             Play. Earn. Redeem real gift cards.
@@ -139,22 +159,18 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Live stats — real figures only; hidden until the API returns non-zero
-          numbers so a new site never shows fabricated or "0 players" counts. */}
-      {stats && (
-        <section className="relative border-y border-white/10 bg-primary-950/60">
-          <div className="mx-auto grid w-full max-w-4xl grid-cols-1 divide-y divide-white/10 px-4 py-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:px-6">
-            {stats.map((stat) => (
-              <div key={stat.label} className="px-4 py-6 text-center">
-                <p className="coin-num text-3xl font-bold text-gold-300 sm:text-4xl">
-                  {stat.value}
-                </p>
-                <p className="mt-1.5 text-sm font-medium text-indigo-200">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Trust signals — static facts about how the rewards work. Rendered
+          server-side (no fetch), so they are in the prerendered HTML and cannot
+          shift layout the way the old client-fetched stats strip did. */}
+      <section className="relative border-y border-white/10 bg-primary-950/60">
+        <div className="mx-auto grid w-full max-w-4xl grid-cols-1 divide-y divide-white/10 px-4 py-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:px-6">
+          {TRUST_SIGNALS.map((signal) => (
+            <div key={signal} className="px-4 py-6 text-center">
+              <p className="text-sm font-medium text-indigo-100">{signal}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Features */}
       <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6">

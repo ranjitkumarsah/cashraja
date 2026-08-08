@@ -1,13 +1,19 @@
 # Cash Raja — https://cashraja.graduatedcoder.in
 # Public marketing pages are open to ALL crawlers, including AI / answer engines
 # (GPTBot, PerplexityBot, ClaudeBot, Google-Extended, etc. — they inherit this
-# group). The signed-in app routes are kept out of the index via a noindex meta
-# tag, not robots.txt, so they can still be rendered without being indexed.
-# Only the admin console and the JSON API are disallowed here.
+# group). The signed-in app routes AND /admin are kept out of the index via a
+# noindex meta tag served in the HTML itself, not via robots.txt, so they can
+# still be crawled and read without being indexed.
+#
+# /admin is deliberately NOT disallowed: a disallowed URL is never fetched, so
+# its noindex can never be read, and Google may still index the bare URL from
+# an external link. Disallow and noindex are mutually exclusive — noindex is
+# the one that actually removes a page, so that is the one used here.
+#
+# /api stays disallowed: it returns JSON, which cannot carry a meta tag.
 
 User-agent: *
 Allow: /
-Disallow: /admin/
 Disallow: /api/
 
 Sitemap: https://cashraja.graduatedcoder.in/sitemap.xml

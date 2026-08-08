@@ -16,7 +16,7 @@ import { BlogIndexPage } from './features/blog/BlogIndexPage';
 import { BlogPostPage } from './features/blog/BlogPostPage';
 import { PrivacyPage } from './features/public/PrivacyPage';
 import { TermsPage } from './features/public/TermsPage';
-import { PRERENDER_ROUTES, renderHead, seoFor, SITE_URL } from './lib/seo/seo-config';
+import { lastModFor, PRERENDER_ROUTES, renderHead, seoFor, SITE_URL } from './lib/seo/seo-config';
 
 /**
  * Public-only route tree for static prerendering. Deliberately does NOT import
@@ -59,3 +59,4 @@ export function render(url: string): { html: string; head: string } {
 
 export const routesToPrerender = PRERENDER_ROUTES;
 export const siteUrl = SITE_URL;
+export { lastModFor };

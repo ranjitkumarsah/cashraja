@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { ContentPage } from '../public/ContentPage';
 import { GetStartedCta } from '../public/marketing';
-import { blogPostBySlug } from './posts-meta';
+import { BLOG_POSTS, blogPostBySlug } from './posts-meta';
 import { POST_BODIES } from './posts-content';
 
 const fmtDate = (iso: string) =>
@@ -41,8 +41,44 @@ export function BlogPostPage() {
           {fmtDate(post.date)} · {post.readingMinutes} min read
         </p>
         <div className="mt-6">{body}</div>
+        <RelatedGuides slug={slug} />
         <GetStartedCta />
       </article>
     </ContentPage>
+  );
+}
+
+/**
+ * Links every other guide from each post.
+ *
+ * Without this each post had exactly one inbound internal link (the /blog hub),
+ * while every marketing page had one from the global nav and footer — so the
+ * articles sat at the bottom of the internal link graph despite being the pages
+ * meant to earn rankings. Derived from BLOG_POSTS, so new posts join the mesh
+ * automatically rather than needing a hand-maintained list.
+ */
+function RelatedGuides({ slug }: { slug: string }) {
+  const others = BLOG_POSTS.filter((p) => p.slug !== slug);
+  if (others.length === 0) return null;
+
+  return (
+    <nav aria-labelledby="related-guides" className="mt-12 border-t border-edge pt-8">
+      <h2 id="related-guides" className="text-lg font-bold text-ink">
+        Related guides
+      </h2>
+      <ul className="mt-4 space-y-4">
+        {others.map((p) => (
+          <li key={p.slug}>
+            <Link
+              to={`/blog/${p.slug}`}
+              className="font-semibold text-primary-600 hover:underline"
+            >
+              {p.h1}
+            </Link>
+            <p className="mt-1 text-sm text-ink-muted">{p.excerpt}</p>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }

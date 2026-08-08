@@ -24,10 +24,10 @@ export interface BlogPostMeta {
 export const BLOG_POSTS: readonly BlogPostMeta[] = [
   {
     slug: 'how-to-earn-free-gift-cards-india-2026',
-    title: 'How to Earn Free Gift Cards in India (2026 Guide) — Cash Raja',
+    title: 'How to Earn Free Gift Cards in India (2026) — Cash Raja',
     h1: 'How to Earn Free Gift Cards in India: 2026 Guide',
     description:
-      'A practical 2026 guide to earning free Amazon, Flipkart and Google Play gift cards in India with a rewards app — offers, surveys, games and referrals, then redeem your coins.',
+      'A practical 2026 guide to earning free Amazon, Flipkart and Google Play gift cards in India — offers, surveys, games and referrals, then redeem your coins.',
     excerpt:
       'The honest, practical way to earn free Amazon, Flipkart and Google Play gift cards in India this year.',
     date: '2026-08-06',
@@ -65,7 +65,7 @@ export const BLOG_POSTS: readonly BlogPostMeta[] = [
     title: 'How to Redeem Coins for Gift Cards in India — Cash Raja',
     h1: 'How to Redeem Coins for Gift Cards on Cash Raja',
     description:
-      'A simple guide to redeeming your Cash Raja coins for Amazon, Flipkart and Google Play gift cards in India — how it works, review times, and how your code is delivered.',
+      'A simple guide to redeeming Cash Raja coins for Amazon, Flipkart and Google Play gift cards in India — how it works and how your code is delivered.',
     excerpt:
       'Turn coins into real gift cards — from picking a brand to getting your code, and how long it takes.',
     date: '2026-08-06',

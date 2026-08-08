@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { extname, join } from 'node:path';
+import { join } from 'node:path';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
@@ -10,6 +10,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { securityHeaders } from './common/security/security-headers';
 import { buildOpenApiDocument, OPENAPI_DOCS_PATH } from './openapi';
+import { createSpaFallback } from './spa-fallback';
 
 async function bootstrap(): Promise<void> {
   // rawBody: webhook HMAC schemes sign the exact bytes the network sent
@@ -61,24 +62,9 @@ async function bootstrap(): Promise<void> {
     // below serves the prerendered file for it at 200 (a redirect to the slash
     // form made the SPA see a trailing-slash path and wrongly noindex it).
     app.useStaticAssets(clientDir, { redirect: false });
-    const indexHtml = join(clientDir, 'index.html');
-    // SPA fallback: a GET for a non-API, extension-less path (a client-side
-    // route like /, /privacy, /admin/dashboard) returns index.html so deep
-    // links and reloads resolve. Real assets and /api/* pass through.
-    app.use((req: Request, res: Response, next: NextFunction) => {
-      if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-      const p = req.path;
-      if (p.startsWith('/api') || p === '/healthz' || p === '/readyz') return next();
-      if (extname(p)) return next();
-      // Serve the prerendered static page for a public route (SEO: crawlers get
-      // real HTML + head), when one exists. Safe-char paths only (no traversal).
-      // Everything else (the app + /admin/*) gets the SPA shell.
-      if (p !== '/' && /^\/[a-zA-Z0-9\-/]+$/.test(p)) {
-        const prerendered = join(clientDir, p, 'index.html');
-        if (existsSync(prerendered)) return res.sendFile(prerendered);
-      }
-      res.sendFile(indexHtml);
-    });
+    // Prerendered public page -> 200; app/admin route -> noindex shell 200;
+    // anything else -> noindex shell 404. See src/spa-fallback.ts.
+    app.use(createSpaFallback(clientDir));
   }
 
   // Interactive API docs (+ live spec) — non-prod only. The committed

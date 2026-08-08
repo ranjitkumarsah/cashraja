@@ -58,6 +58,13 @@ export function FreeGiftCardsPage() {
           See the full walkthrough in our{' '}
           <Link to="/how-to-earn" className="font-semibold text-primary-600 hover:underline">
             how to earn guide
+          </Link>{' '}
+          or the{' '}
+          <Link
+            to="/blog/how-to-earn-free-gift-cards-india-2026"
+            className="font-semibold text-primary-600 hover:underline"
+          >
+            full 2026 guide to earning free gift cards
           </Link>
           .
         </p>
@@ -70,6 +77,13 @@ export function FreeGiftCardsPage() {
           job or a guaranteed source of income. Read more in our{' '}
           <Link to="/faq" className="font-semibold text-primary-600 hover:underline">
             FAQ
+          </Link>
+          , or read the longer answer to{' '}
+          <Link
+            to="/blog/is-cash-raja-legit"
+            className="font-semibold text-primary-600 hover:underline"
+          >
+            is Cash Raja legit
           </Link>
           .
         </p>

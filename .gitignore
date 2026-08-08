@@ -5,6 +5,7 @@ coverage/
 *.tsbuildinfo
 .eslintcache
 
+cashraja.graduatedcoder.in-audit/
 
 # Env & secrets — never commit real values
 .env
@@ -36,3 +37,5 @@ Thumbs.db
 # Prisma
 backend/prisma/*.db
 app/android/build/
+.lh/.lhignore
+.lh/.gitignore.json

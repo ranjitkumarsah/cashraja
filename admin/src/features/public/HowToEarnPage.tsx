@@ -41,13 +41,30 @@ export function HowToEarnPage() {
           bonus on your friends' earnings for a limited time.
         </li>
       </ul>
+      <p className="mt-4 text-ink-muted">
+        Want to move faster? Our guide to the{' '}
+        <Link
+          to="/blog/best-ways-to-earn-coins-fast"
+          className="font-semibold text-primary-600 hover:underline"
+        >
+          fastest ways to earn coins
+        </Link>{' '}
+        compares each earning method in detail.
+      </p>
 
       <h2 className="mt-10 text-2xl font-bold text-ink">How to redeem your coins for gift cards</h2>
       <p className="mt-3 text-ink-muted">
         Once you have enough coins, open the <strong>Rewards</strong> store, choose a brand
         (Amazon, Flipkart or Google Play) and a denomination such as ₹50, ₹100 or ₹250, and redeem.
         Your gift-card code is delivered in-app after a quick review. Coins have no cash value and
-        are redeemable only for digital gift cards.
+        are redeemable only for digital gift cards. For the full walkthrough, see the{' '}
+        <Link
+          to="/blog/how-to-redeem-coins-for-gift-cards"
+          className="font-semibold text-primary-600 hover:underline"
+        >
+          step-by-step redemption guide
+        </Link>
+        .
       </p>
 
       <h2 className="mt-10 text-2xl font-bold text-ink">Get started in 3 steps</h2>

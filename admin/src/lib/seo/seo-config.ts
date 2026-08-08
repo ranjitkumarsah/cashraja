@@ -6,8 +6,10 @@
  *
  * Covers: classic SEO (titles, canonical, hreflang, OG/Twitter, sitemap), a
  * linked entity graph for AEO/answer engines (@id-linked Organization ↔ WebSite
- * ↔ WebPage + BreadcrumbList + FAQ + HowTo), Local SEO (India geo signals,
- * en-IN), and GEO (clean factual content + llms.txt + AI-crawler-friendly).
+ * ↔ WebPage + BreadcrumbList + FAQ), Local SEO (India geo signals, en-IN), and
+ * GEO (clean factual content + llms.txt + AI-crawler-friendly).
+ *
+ * Deliberately absent: HowTo (deprecated Sept 2023, SERP feature withdrawn).
  */
 import { FAQ_ITEMS } from '../../features/landing/faq';
 import { BLOG_POSTS, type BlogPostMeta } from '../../features/blog/posts-meta';
@@ -107,9 +109,9 @@ const faqLd = (items: readonly { q: string; a: string }[]): Record<string, unkno
 export const PAGE_SEO: Record<string, PageSeo> = {
   '/': {
     path: '/',
-    title: 'Cash Raja — Earn Free Gift Cards in India | Play, Earn & Redeem',
+    title: 'Cash Raja — Earn Free Gift Cards in India',
     description:
-      'Earn coins by playing games, completing offers and surveys, then redeem for Amazon, Flipkart and Google Play gift cards. Free to join · for ages 18+ in India.',
+      'Earn coins by playing games and completing offers, then redeem for Amazon, Flipkart and Google Play gift cards. Free to join · ages 18+ · India.',
     crumb: 'Home',
     jsonLd: [softwareAppLd, faqLd(FAQ_ITEMS)],
   },
@@ -117,28 +119,18 @@ export const PAGE_SEO: Record<string, PageSeo> = {
     path: '/how-to-earn',
     title: 'How to Earn Free Gift Cards in India — Cash Raja Guide',
     description:
-      'Step-by-step guide to earning free Amazon, Flipkart and Google Play gift cards in India with Cash Raja: complete offers, surveys, games and referrals, then redeem your coins.',
+      'Step by step: earn free Amazon, Flipkart and Google Play gift cards in India with Cash Raja. Complete offers, surveys and games, then redeem your coins.',
     crumb: 'How to earn',
-    jsonLd: [
-      {
-        '@context': 'https://schema.org',
-        '@type': 'HowTo',
-        name: 'How to earn free gift cards in India with Cash Raja',
-        totalTime: 'PT5M',
-        estimatedCost: { '@type': 'MonetaryAmount', currency: 'INR', value: '0' },
-        step: [
-          { '@type': 'HowToStep', name: 'Sign in with Google', text: 'Create your free account with Google — one account per person.' },
-          { '@type': 'HowToStep', name: 'Earn coins', text: 'Complete offers, answer surveys, play games and refer friends to build your coin balance.' },
-          { '@type': 'HowToStep', name: 'Redeem gift cards', text: 'Exchange your coins for Amazon, Flipkart or Google Play gift cards in the Rewards store.' },
-        ],
-      },
-    ],
+    // No page-specific JSON-LD: the HowTo block that used to sit here was
+    // removed because Google deprecated HowTo rich results in Sept 2023 and
+    // withdrew the SERP feature entirely, so it could never render. The steps
+    // remain in the page HTML, which is what crawlers and readers actually use.
   },
   '/free-gift-cards': {
     path: '/free-gift-cards',
-    title: 'Free Gift Cards in India (2026) — Amazon, Flipkart & Google Play | Cash Raja',
+    title: 'Free Gift Cards in India (2026) — Cash Raja',
     description:
-      'Get free Amazon, Flipkart and Google Play gift cards in India with Cash Raja. Earn coins by completing offers, surveys and games, then redeem for real digital gift cards. Free · 18+.',
+      'Get free Amazon, Flipkart and Google Play gift cards in India. Earn coins with offers, surveys and games, then redeem for real digital cards. Free · 18+.',
     crumb: 'Free gift cards',
     jsonLd: [
       {
@@ -155,47 +147,36 @@ export const PAGE_SEO: Record<string, PageSeo> = {
   },
   '/earn-money-online': {
     path: '/earn-money-online',
-    title: 'Earn Money Online in India — Free Rewards & Earning App | Cash Raja',
+    title: 'Earn Money Online in India — Free Rewards App | Cash Raja',
     description:
-      'Looking to earn online in India? Cash Raja is a free rewards app — complete offers, surveys and games to earn coins and redeem them for Amazon, Flipkart and Google Play gift cards. 18+.',
+      'Cash Raja is a free rewards app for India. Complete offers, surveys and games to earn coins, then redeem for Amazon, Flipkart and Google Play gift cards. 18+.',
     crumb: 'Earn online',
-    jsonLd: [
-      {
-        '@context': 'https://schema.org',
-        '@type': 'HowTo',
-        name: 'How to earn online in India with Cash Raja',
-        step: [
-          { '@type': 'HowToStep', name: 'Join free', text: 'Sign in with Google — no fee, no purchase, ages 18+.' },
-          { '@type': 'HowToStep', name: 'Complete tasks', text: 'Do offers, surveys and games; every reward is verified on our servers.' },
-          { '@type': 'HowToStep', name: 'Redeem rewards', text: 'Turn coins into Amazon, Flipkart or Google Play gift cards.' },
-        ],
-      },
-    ],
+    // No page-specific JSON-LD — see /how-to-earn above (deprecated HowTo).
   },
   '/free-amazon-gift-card': {
     path: '/free-amazon-gift-card',
     title: 'Free Amazon Gift Card (Amazon Pay) in India — Cash Raja',
     description:
-      'Earn a free Amazon Pay gift card in India with Cash Raja. Complete offers, surveys and games to earn coins, then redeem for an Amazon gift card. Free to join · 18+.',
+      'Earn a free Amazon Pay gift card in India with Cash Raja. Complete offers and games to earn coins, then redeem for an Amazon card. Free · 18+.',
     crumb: 'Free Amazon gift card',
   },
   '/free-flipkart-gift-card': {
     path: '/free-flipkart-gift-card',
     title: 'Free Flipkart Gift Card in India — Cash Raja',
     description:
-      'Earn a free Flipkart gift card in India with Cash Raja. Complete simple tasks to earn coins and redeem them for a Flipkart voucher. Free to join, no purchase required · 18+.',
+      'Earn a free Flipkart gift card in India with Cash Raja. Complete simple tasks to earn coins, then redeem for a Flipkart voucher. No purchase · 18+.',
     crumb: 'Free Flipkart gift card',
   },
   '/free-google-play-gift-card': {
     path: '/free-google-play-gift-card',
-    title: 'Free Google Play Gift Card & Redeem Code in India — Cash Raja',
+    title: 'Free Google Play Gift Card & Code in India — Cash Raja',
     description:
-      'Get a free Google Play gift card and redeem code in India with Cash Raja. Earn coins with offers, surveys and games, then redeem for a Google Play code. Free · 18+.',
+      'Get a free Google Play gift card and redeem code in India. Earn coins with offers, surveys and games, then redeem for a Play code. Free · 18+.',
     crumb: 'Free Google Play gift card',
   },
   '/refer-and-earn': {
     path: '/refer-and-earn',
-    title: 'Refer and Earn — Invite Friends, Earn Bonus Coins | Cash Raja',
+    title: 'Refer and Earn — Invite Friends, Earn Coins | Cash Raja',
     description:
       'Cash Raja refer and earn: share your referral code, and earn bonus coins when friends join and complete tasks. Redeem coins for gift cards. Free · 18+ · India.',
     crumb: 'Refer and earn',
@@ -233,7 +214,7 @@ export const PAGE_SEO: Record<string, PageSeo> = {
   },
   '/faq': {
     path: '/faq',
-    title: 'Cash Raja FAQ — How to Earn Coins & Redeem Gift Cards in India',
+    title: 'Cash Raja FAQ — Earning Coins & Redeeming Gift Cards',
     description:
       'Answers to common questions about Cash Raja: how to earn coins, redeem Amazon/Flipkart/Google Play gift cards, referrals, payouts and eligibility (18+, India).',
     crumb: 'FAQ',
@@ -288,6 +269,24 @@ for (const post of BLOG_POSTS) {
 
 /** Public routes to statically prerender. */
 export const PRERENDER_ROUTES = Object.keys(PAGE_SEO);
+
+/**
+ * Real last-modified date for a public route, for <lastmod> in the sitemap.
+ *
+ * Blog posts carry their own `updated` date; everything else uses the
+ * hand-bumped LAST_MODIFIED above. Deliberately NOT the build timestamp:
+ * stamping "today" on every URL each build tells Google all 17 pages changed
+ * whenever anything is deployed, and once it learns the signal is noise it
+ * discounts <lastmod> for the whole site.
+ */
+export function lastModFor(path: string): string {
+  if (path.startsWith('/blog/')) {
+    const slug = path.slice('/blog/'.length);
+    const post = BLOG_POSTS.find((p) => p.slug === slug);
+    if (post) return post.updated;
+  }
+  return LAST_MODIFIED;
+}
 
 export function seoFor(path: string): PageSeo | null {
   return PAGE_SEO[path] ?? null;
